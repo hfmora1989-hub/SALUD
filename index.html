@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Analytics Platform - Gestión & Analítica de Salud</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PDF.js para extraer texto localmente de archivos PDF reales -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <!-- SheetJS (XLSX) para exportar historial clínico a Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    
+    <!-- NOTIFICATION SYSTEM -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- REGISTER & LOGIN VIEW -->
+    <div id="auth-view" class="view auth-container">
+        <div class="auth-card-wrapper">
+            <div class="auth-info-panel">
+                <div class="auth-logo">
+                    <span class="logo-icon">✦</span>
+                    <h2>HealthAnalytics<span class="text-accent">AI</span></h2>
+                </div>
+                <h3>Visualiza, comprende y gestiona tu salud de forma inteligente</h3>
+                <p>Nuestra plataforma clínica analiza tus exámenes médicos con IA, detecta tendencias de salud, predice evoluciones y te entrega planes de bienestar validados por profesionales médicos.</p>
+                <div class="auth-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <div>
+                            <strong>Analítica Avanzada:</strong> Gráficos interactivos de evolución con rangos normales.
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🛡️</span>
+                        <div>
+                            <strong>Seguridad y Privacidad:</strong> Datos cifrados en reposo (AES-256) y en tránsito (TLS 1.3).
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">👨‍⚕️</span>
+                        <div>
+                            <strong>Validación Médica:</strong> Todas las sugerencias de la IA son revisadas por médicos especialistas.
+                        </div>
+                    </div>
+                </div>
+                <div class="auth-footer-info">
+                    <small>Cumple con el estándar IEEE 29148 y principios de control RBAC.</small>
+                </div>
+            </div>
+            <div class="auth-form-panel">
+                <div class="auth-header">
+                    <h2>Crear Cuenta</h2>
+                    <p>Comienza tu camino hacia una mejor salud hoy.</p>
+                </div>
+                <form id="register-form" class="auth-form" onsubmit="event.preventDefault();">
+                    <div class="form-group">
+                        <label for="reg-email">Correo Electrónico</label>
+                        <input type="email" id="reg-email" placeholder="ejemplo@correo.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Contraseña</label>
+                        <input type="password" id="reg-password" placeholder="••••••••" required>
+                    </div>
+                    <div class="form-group consent-checkbox">
+                        <input type="checkbox" id="reg-consent" required>
+                        <label for="reg-consent">
+                            Acepto el <a href="#" id="consent-terms-link">Tratamiento de Datos Personales y Médicos</a> de acuerdo con la regulación aplicable (Habas Data/Privacidad).
+                        </label>
+                    </div>
+                    <button type="submit" id="btn-register" class="btn btn-primary btn-block">Registrarse y Crear Cuenta</button>
+                </form>
+
+                <div class="auth-divider">
+                    <span>O registrarse con</span>
+                </div>
+
+                <div class="auth-social-buttons">
+                    <button class="btn btn-outline" id="btn-google-auth">
+                        <span class="social-icon">Google</span>
+                    </button>
+                    <button class="btn btn-outline" id="btn-apple-auth">
+                        <span class="social-icon">Apple</span>
+                    </button>
+                </div>
+
+                <div class="auth-switch">
+                    ¿Ya tienes una cuenta? <a href="#" id="switch-to-login">Inicia sesión simulada</a>
+                </div>
+                
+                <div class="auth-reset-container" style="margin-top: 1.5rem; text-align: center; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                    <button type="button" id="btn-reset-db" class="btn btn-outline btn-sm text-danger" style="width: 100%;">Restablecer Base de Datos del Sistema (Limpieza)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app-container" class="app-layout hidden">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="logo-icon">✦</span>
+                <h2>HealthAnalytics<span class="text-accent">AI</span></h2>
+            </div>
+            
+            <div class="user-quick-profile">
+                <div class="user-avatar" id="user-avatar-char">U</div>
+                <div class="user-info">
+                    <h4 id="user-display-email">usuario@correo.com</h4>
+                    <span class="role-badge" id="sidebar-role-badge">Paciente</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- PATIENT NAV ITEMS -->
+                <div class="nav-section" id="nav-section-patient">
+                    <span class="nav-section-title">Mi Salud</span>
+                    <a href="#" class="nav-item active" data-view="dashboard-view">
+                        <span class="nav-icon">📊</span> Panel de Salud
+                    </a>
+                    <a href="#" class="nav-item" data-view="upload-view">
+                        <span class="nav-icon">📤</span> Cargar Examen
+                    </a>
+                    <a href="#" class="nav-item" data-view="profile-view">
+                        <span class="nav-icon">👤</span> Perfil Médico
+                    </a>
+                    <a href="#" class="nav-item" data-view="interpretation-view">
+                        <span class="nav-icon">🧠</span> Informe de IA
+                    </a>
+                </div>
+
+                <!-- DOCTOR NAV ITEMS -->
+                <div class="nav-section hidden" id="nav-section-doctor">
+                    <span class="nav-section-title">Panel Médico</span>
+                    <a href="#" class="nav-item" data-view="doctor-view">
+                        <span class="nav-icon">👨‍⚕️</span> Validaciones Pendientes
+                    </a>
+                </div>
+
+                <!-- UTILITIES NAV ITEMS -->
+                <div class="nav-section">
+                    <span class="nav-section-title">Sistema</span>
+                    <a href="#" class="nav-item" data-view="audit-view">
+                        <span class="nav-icon">📜</span> Log de Auditoría
+                    </a>
+                    <a href="#" class="nav-item" id="btn-logout">
+                        <span class="nav-icon">🚪</span> Cerrar Sesión
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            <!-- TOP BAR -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h2 id="view-title">Panel de Salud</h2>
+                    <div class="env-version-container">
+                        <span id="env-badge" class="env-badge staging" title="Ambiente actual configurado en Firebase">PRUEBAS</span>
+                        <span id="app-version-tag" class="version-tag" title="Control de versión SemVer">v1.0.0</span>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <!-- ACCIONES RÁPIDAS (EXCEL & REINICIAR) -->
+                    <div class="topbar-actions">
+                        <button id="btn-export-excel" class="btn btn-secondary btn-sm" title="Descargar todo el historial clínico en Excel (.xlsx)">
+                            📊 Exportar Excel
+                        </button>
+                        <button id="btn-clear-current-data" class="btn btn-outline-danger btn-sm" title="Eliminar información actual y cargar de cero">
+                            🗑️ Eliminar Datos
+                        </button>
+                    </div>
+
+                    <!-- ROLE SWITCHER -->
+                    <div class="role-switcher">
+                        <span class="role-label">Cambiar Rol:</span>
+                        <div class="segmented-control">
+                            <input type="radio" name="role" id="role-patient" checked>
+                            <label for="role-patient">Paciente</label>
+                            <input type="radio" name="role" id="role-doctor">
+                            <label for="role-doctor">Médico</label>
+                            <input type="radio" name="role" id="role-auditor">
+                            <label for="role-auditor">Auditor</label>
+                        </div>
+                    </div>
+
+                    <!-- CLINICAL ALERTS NOTIFICATION BELL -->
+                    <div class="notifications-bell" id="btn-notifications">
+                        <span class="bell-icon">🔔</span>
+                        <span class="notification-badge hidden" id="alerts-badge">0</span>
+                        <div class="notifications-dropdown hidden" id="notifications-dropdown">
+                            <h4>Alertas Médicas Críticas</h4>
+                            <div class="notifications-list" id="notifications-list">
+                                <div class="empty-notifications">No hay alertas críticas pendientes.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- SUB-VIEWS CONTAINER -->
+            <div class="view-content-wrapper">
+                
+                <!-- 1. DASHBOARD VIEW -->
+                <section id="dashboard-view" class="view-section active">
+                    <div class="dashboard-grid">
+                        
+                        <!-- KPIs -->
+                        <div class="card kpi-card health-score-card">
+                            <h3>Score de Salud General</h3>
+                            <div class="gauge-container">
+                                <svg class="gauge" viewBox="0 0 100 50">
+                                    <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8"></path>
+                                    <path class="gauge-fill" id="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8" stroke-dasharray="125.6" stroke-dashoffset="125.6"></path>
+                                </svg>
+                                <div class="gauge-value" id="health-score-val">--</div>
+                            </div>
+                            <div class="gauge-status" id="health-score-status">Pendiente de Examen</div>
+                            <p class="card-desc">Carga tu primer examen médico para activar el análisis.</p>
+                        </div>
+
+                        <div class="card kpi-card status-summary-card">
+                            <h3>Indicadores Clínicos</h3>
+                            <div class="indicator-donut-mock">
+                                <div class="stat-circle">
+                                    <span class="stat-number" id="kpi-altered-count">0</span>
+                                    <span class="stat-label">Alterados</span>
+                                </div>
+                                <div class="stat-list">
+                                    <div class="stat-item text-success">
+                                        <span class="dot bg-success"></span>
+                                        <span id="kpi-normal-count">0</span> Normales
+                                    </div>
+                                    <div class="stat-item text-danger">
+                                        <span class="dot bg-danger"></span>
+                                        <span id="kpi-critical-count">0</span> Críticos
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card kpi-card imc-card">
+                            <h3>Composición Corporal & Riesgo</h3>
+                            <div class="imc-stats">
+                                <div class="imc-row">
+                                    <span class="label">Peso:</span>
+                                    <strong id="kpi-weight">-- kg</strong>
+                                </div>
+                                <div class="imc-row">
+                                    <span class="label">IMC:</span>
+                                    <strong id="kpi-imc">--</strong>
+                                    <span class="badge" id="kpi-imc-badge">--</span>
+                                </div>
+                                <div class="imc-row border-top">
+                                    <span class="label">Riesgo Cardiovascular:</span>
+                                    <strong id="kpi-cardio-risk" class="text-warning">Cargando...</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card kpi-card controls-card">
+                            <h3>Próximos Controles</h3>
+                            <ul class="control-checklist" id="control-checklist">
+                                <li><input type="checkbox" checked disabled> Completar perfil de salud</li>
+                                <li><input type="checkbox" id="chk-first-exam" disabled> Cargar primer examen clínico</li>
+                                <li><input type="checkbox" id="chk-doctor-validation" disabled> Obtener validación médica</li>
+                                <li><input type="checkbox" id="chk-next-checkup" disabled> Próximo control clínico (Recomendado)</li>
+                            </ul>
+                        </div>
+
+                        <!-- CHARTS PANEL -->
+                        <div class="card span-2 chart-card">
+                            <div class="chart-header">
+                                <h3>Evolución Histórica de Indicadores</h3>
+                                <div class="chart-controls">
+                                    <select id="chart-indicator-select-1">
+                                        <option value="glucosa">Glucosa</option>
+                                        <option value="hba1c">HbA1c</option>
+                                        <option value="colesterol_total">Colesterol Total</option>
+                                        <option value="ldl">LDL (Colesterol Malo)</option>
+                                        <option value="hdl">HDL (Colesterol Bueno)</option>
+                                        <option value="trigliceridos">Triglicéridos</option>
+                                        <option value="creatinina">Creatinina</option>
+                                        <option value="tsh">TSH</option>
+                                        <option value="vitamina_d">Vitamina D</option>
+                                        <option value="hemoglobina">Hemoglobina</option>
+                                        <option value="ferritina">Ferritina</option>
+                                        <option value="peso">Peso Corporal</option>
+                                    </select>
+                                    <span class="vs-text">vs</span>
+                                    <select id="chart-indicator-select-2">
+                                        <option value="none">Ninguno (Solo uno)</option>
+                                        <option value="glucosa">Glucosa</option>
+                                        <option value="hba1c" selected>HbA1c</option>
+                                        <option value="colesterol_total">Colesterol Total</option>
+                                        <option value="ldl">LDL</option>
+                                        <option value="hdl">HDL</option>
+                                        <option value="trigliceridos">Triglicéridos</option>
+                                        <option value="creatinina">Creatinina</option>
+                                        <option value="tsh">TSH</option>
+                                        <option value="vitamina_d">Vitamina D</option>
+                                        <option value="hemoglobina">Hemoglobina</option>
+                                        <option value="ferritina">Ferritina</option>
+                                        <option value="peso">Peso Corporal</option>
+                                    </select>
+                                    <div class="segmented-control btn-group-sm">
+                                        <input type="radio" name="timeframe" id="tf-3m" value="3m">
+                                        <label for="tf-3m">3M</label>
+                                        <input type="radio" name="timeframe" id="tf-6m" value="6m">
+                                        <label for="tf-6m">6M</label>
+                                        <input type="radio" name="timeframe" id="tf-1y" value="1y">
+                                        <label for="tf-1y">1A</label>
+                                        <input type="radio" name="timeframe" id="tf-all" value="all" checked>
+                                        <label for="tf-all">Todo</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="evolutionChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card chart-card">
+                            <h3>Estado General por Categorías</h3>
+                            <div class="chart-wrapper-radar">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- EXAM COMPARISON TABLE -->
+                        <div class="card span-2 table-card">
+                            <div class="card-header-btn">
+                                <h3>Comparación entre Exámenes (RF-42)</h3>
+                                <div class="table-actions">
+                                    <span class="table-dates-label" id="comparison-date-label">Examen anterior vs Examen actual</span>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="clinical-table" id="comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Indicador</th>
+                                            <th>Examen Anterior</th>
+                                            <th>Examen Actual</th>
+                                            <th>Variación Absoluta</th>
+                                            <th>Variación Porcentual</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">Carga al menos dos exámenes para ver la comparación histórica.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- PREDICTION CARD -->
+                        <div class="card prediction-card">
+                            <h3>Predicción de Evolución (RF-46)</h3>
+                            <p class="card-desc">Estimación de la evolución esperada para los próximos 6 meses si se siguen las recomendaciones del plan personalizado.</p>
+                            <div class="prediction-selector">
+                                <label for="pred-indicator">Indicador a proyectar:</label>
+                                <select id="pred-indicator">
+                                    <option value="peso">Peso Corporal</option>
+                                    <option value="colesterol_total">Colesterol Total</option>
+                                    <option value="glucosa">Glucosa</option>
+                                    <option value="ldl">Colesterol LDL</option>
+                                </select>
+                            </div>
+                            <div class="projection-graph-wrapper">
+                                <canvas id="projectionChart"></canvas>
+                            </div>
+                            <div class="prediction-disclaimer">
+                                ⚠️ Las predicciones son estimaciones clínicas basadas en modelos estadísticos y no constituyen resultados garantizados.
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- 2. UPLOAD EXAM VIEW -->
+                <section id="upload-view" class="view-section">
+                    <div class="upload-wrapper">
+                        
+                        <div class="card upload-card">
+                            <h3>Subir Nuevo Examen Clínico</h3>
+                            <p class="card-desc">Carga tu reporte en formato PDF, Imagen o Escaneo. El sistema procesará el texto automáticamente utilizando OCR clínico.</p>
+                            
+                            <!-- DRAG AND DROP ZONE -->
+                            <div class="drop-zone" id="drop-zone">
+                                <span class="drop-icon">📄</span>
+                                <p class="drop-text">Arrastra y suelta tu archivo PDF o imagen de examen aquí</p>
+                                <span class="drop-or">o</span>
+                                <button class="btn btn-secondary" id="btn-browse-file">Buscar Archivo</button>
+                                <input type="file" id="file-input" class="hidden" accept=".pdf,image/*">
+                            </div>
+
+                            <!-- PRESETS / DUMMY TEMPLATES -->
+                            <div class="presets-section">
+                                <h4>Probar con un examen de ejemplo predefinido:</h4>
+                                <p class="presets-desc">Para facilitar las pruebas rápidas de la plataforma sin tener que escanear un archivo real, selecciona una de las siguientes plantillas clínicas predefinidas:</p>
+                                <div class="preset-chips">
+                                    <button class="chip preset-chip" data-preset="healthy">
+                                        🟢 Saludable y Estable
+                                    </button>
+                                    <button class="chip preset-chip" data-preset="diabetic_critical">
+                                        🔴 Diabetes y Alerta Crítica (Glucosa >250)
+                                    </button>
+                                    <button class="chip preset-chip" data-preset="cholesterol_high">
+                                        🟡 Colesterol Alto & Riesgo
+                                    </button>
+                                    <button class="chip preset-chip" data-preset="anemia">
+                                        🟡 Anemia y Déficit de Vitamina D
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OCR PROCESSING LOADER -->
+                        <div class="card loading-card hidden" id="ocr-loader">
+                            <div class="loader-scanner"></div>
+                            <div class="loader-text">
+                                <h3 id="loader-title">Procesando Documento...</h3>
+                                <p id="loader-subtitle">Iniciando escaneo y análisis del texto (OCR)...</p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" id="ocr-progress"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OCR VERIFICATION TABLE -->
+                        <div class="card ocr-result-card hidden" id="ocr-result-card">
+                            <div class="card-header-btn">
+                                <div>
+                                    <h3>Validar Información Detectada (HU-04)</h3>
+                                    <p class="card-desc">Por favor, revisa y corrige cualquier error del OCR antes de guardar los datos en tu historial clínico.</p>
+                                </div>
+                                <div class="ocr-meta">
+                                    <label for="exam-date">Fecha de toma:</label>
+                                    <input type="date" id="exam-date">
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="clinical-table" id="ocr-edit-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Indicador Clínico</th>
+                                            <th>Valor Detectado</th>
+                                            <th>Unidades</th>
+                                            <th>Rango de Referencia</th>
+                                            <th>Estado Inicial</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ocr-edit-tbody">
+                                        <!-- Dynamically generated rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="ocr-actions-footer">
+                                <button class="btn btn-outline" id="btn-cancel-ocr">Cancelar</button>
+                                <button class="btn btn-primary" id="btn-save-exam">Guardar en Historial y Analizar</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- 3. MEDICAL PROFILE VIEW -->
+                <section id="profile-view" class="view-section">
+                    <div class="profile-wrapper">
+                        <div class="card profile-card">
+                            <h3>Información Personal y Antecedentes (HU-02)</h3>
+                            <p class="card-desc">Completa tu perfil médico detallado para que la Inteligencia Artificial y el Motor de Reglas personalicen las recomendaciones a tus necesidades particulares.</p>
+                            
+                            <form id="profile-form" class="profile-form" onsubmit="event.preventDefault();">
+                                
+                                <div class="form-section-title">Datos Personales y Biométricos</div>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="prof-age">Edad (años)</label>
+                                        <input type="number" id="prof-age" min="1" max="120" placeholder="Ej. 42" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-sex">Sexo Biológico</label>
+                                        <select id="prof-sex" required>
+                                            <option value="">Selecciona...</option>
+                                            <option value="M">Masculino</option>
+                                            <option value="F">Femenino</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-weight">Peso actual (kg)</label>
+                                        <input type="number" id="prof-weight" step="0.1" min="10" max="300" placeholder="Ej. 78.5" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-height">Estatura (cm)</label>
+                                        <input type="number" id="prof-height" min="50" max="250" placeholder="Ej. 175" required>
+                                    </div>
+                                    <div class="form-group" id="pregnancy-container">
+                                        <label for="prof-pregnancy">¿Embarazo activo?</label>
+                                        <select id="prof-pregnancy">
+                                            <option value="N">No</option>
+                                            <option value="S">Sí</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="prof-activity">Nivel de Actividad Física</label>
+                                        <select id="prof-activity" required>
+                                            <option value="sedentario">Sedentario (Poco o nada de ejercicio)</option>
+                                            <option value="moderado" selected>Moderado (Ejercicio 2-3 veces/semana)</option>
+                                            <option value="activo">Activo (Ejercicio intenso 4-5 veces/semana)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-section-title">Antecedentes Clínicos</div>
+                                <div class="form-grid">
+                                    <div class="form-group span-2">
+                                        <label>Enfermedades Diagnosticadas</label>
+                                        <div class="checkbox-group-grid">
+                                            <label><input type="checkbox" name="disease" value="diabetes"> Diabetes / Resistencia Insulina</label>
+                                            <label><input type="checkbox" name="disease" value="hipertension"> Hipertensión Arterial</label>
+                                            <label><input type="checkbox" name="disease" value="dislipidemia"> Dislipidemia (Colesterol/Triglicéridos)</label>
+                                            <label><input type="checkbox" name="disease" value="renal"> Enfermedad Renal Crónica</label>
+                                            <label><input type="checkbox" name="disease" value="tiroides"> Hipotiroidismo / Hipertiroidismo</label>
+                                            <label><input type="checkbox" name="disease" value="depresion"> Depresión o Ansiedad Reportada</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group span-2">
+                                        <label for="prof-meds">Medicamentos en uso actual (Separados por comas)</label>
+                                        <input type="text" id="prof-meds" placeholder="Ej. Metformina 850mg, Enalapril 10mg, Atorvastatina 20mg">
+                                    </div>
+
+                                    <div class="form-group span-2">
+                                        <label for="prof-injuries">Lesiones o Restricciones Físicas</label>
+                                        <input type="text" id="prof-injuries" placeholder="Ej. Hernia discal L4-L5, Artrosis de rodilla izquierda, Ninguna">
+                                    </div>
+                                </div>
+
+                                <div class="form-section-title">Objetivos de Salud & Estilo de Vida</div>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="prof-goal">Objetivo Primario</label>
+                                        <select id="prof-goal" required>
+                                            <option value="perder_peso">Perder peso de forma saludable</option>
+                                            <option value="ganar_musculo">Aumentar masa muscular</option>
+                                            <option value="mejorar_cardio">Mejorar condición cardiovascular</option>
+                                            <option value="controlar_glucemia">Estabilizar niveles de glucemia</option>
+                                            <option value="bienestar">Bienestar general y energía</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="prof-diet">Restricciones Alimenticias o Preferencias</label>
+                                        <select id="prof-diet">
+                                            <option value="ninguna">Ninguna restricción</option>
+                                            <option value="vegetariano">Vegetariano</option>
+                                            <option value="vegano">Vegano</option>
+                                            <option value="celiaco">Celíaco / Libre de Gluten</option>
+                                            <option value="hipertensivo_bajo_sodio">Dieta baja en sodio (DASH)</option>
+                                            <option value="bajo_carbohidratos">Baja en carbohidratos (Low Carb)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="prof-gym">Acceso a Gimnasio / Equipamiento</label>
+                                        <select id="prof-gym">
+                                            <option value="total">Acceso total a gimnasio equipado</option>
+                                            <option value="calistenia">Solo peso corporal / calistenia en casa</option>
+                                            <option value="mancuernas">Equipamiento básico (Mancuernas/Bandas en casa)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="prof-budget">Presupuesto Estimado Alimentación</label>
+                                        <select id="prof-budget">
+                                            <option value="economico">Económico (Ingredientes locales básicos)</option>
+                                            <option value="moderado" selected>Moderado (Equilibrado)</option>
+                                            <option value="premium">Premium (Alimentos orgánicos/suplementos)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="profile-actions-footer">
+                                    <button type="button" id="btn-delete-account" class="btn btn-outline text-danger">Eliminar mi Cuenta y Datos</button>
+                                    <button type="submit" id="btn-save-profile" class="btn btn-primary">Guardar Perfil Médico</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. AI INTERPRETATION VIEW -->
+                <section id="interpretation-view" class="view-section">
+                    <div class="ai-view-wrapper">
+                        
+                        <!-- NO EXAM PLACEHOLDER -->
+                        <div id="ai-placeholder-card" class="card empty-state-card">
+                            <span class="empty-icon">🧠</span>
+                            <h3>Esperando Resultados Clínicos</h3>
+                            <p>Para generar la interpretación detallada e inteligente de tus indicadores mediante IA, primero debes registrar tu perfil médico y cargar al menos un examen de laboratorio.</p>
+                            <div class="empty-actions">
+                                <button class="btn btn-primary" onclick="switchActiveView('upload-view')">Ir a Cargar Examen</button>
+                            </div>
+                        </div>
+
+                        <!-- MAIN INTERPRETATION CONTENT -->
+                        <div id="ai-report-content" class="hidden">
+                            <!-- CLINICAL ALERT BANNER (If rules engine triggers critical alert) -->
+                            <div class="clinical-alert-banner hidden" id="ai-critical-banner">
+                                <span class="alert-banner-icon">⚠️</span>
+                                <div class="alert-banner-text">
+                                    <strong>¡Alerta Clínica Crítica Detectada!</strong>
+                                    <p id="ai-critical-banner-desc">Existen valores fuera de los límites seguros. Se han establecido restricciones preventivas en tu plan.</p>
+                                </div>
+                            </div>
+
+                            <!-- VALIDATION STATUS BANNER -->
+                            <div class="doctor-validation-banner" id="ai-validation-banner">
+                                <span class="banner-status-icon" id="validation-icon">⏳</span>
+                                <div class="banner-status-text">
+                                    <strong id="validation-title">Informe en Proceso de Revisión</strong>
+                                    <p id="validation-subtitle">Las recomendaciones de la IA están siendo validadas por un profesional de la salud antes de su entrega definitiva.</p>
+                                </div>
+                            </div>
+
+                            <div class="ai-report-layout">
+                                <!-- LEFT PANEL: EXPLANATIONS -->
+                                <div class="ai-report-left">
+                                    <div class="card report-card">
+                                        <div class="card-header-btn">
+                                            <h3>Interpretación del Examen Clínico (HU-06)</h3>
+                                            <span class="ai-badge">Motor IA Orquestado</span>
+                                        </div>
+                                        
+                                        <div class="tab-container">
+                                            <div class="tab-headers">
+                                                <button class="tab-header active" data-tab="tab-easy">Explicación Sencilla</button>
+                                                <button class="tab-header" data-tab="tab-technical">Explicación Técnica</button>
+                                                <button class="tab-header" data-tab="tab-risks">Riesgos Clinicos</button>
+                                            </div>
+                                            
+                                            <div class="tab-contents">
+                                                <div class="tab-content active" id="tab-easy">
+                                                    <p class="explanation-p" id="ai-text-easy">Generando explicación sencilla en lenguaje comprensible...</p>
+                                                </div>
+                                                <div class="tab-content" id="tab-technical">
+                                                    <p class="explanation-p" id="ai-text-technical">Generando desglose técnico de variables, enzimas e indicadores...</p>
+                                                </div>
+                                                <div class="tab-content" id="tab-risks">
+                                                    <p class="explanation-p text-danger-soft" id="ai-text-risks">Analizando factores de riesgo metabólico y cardiovascular basados en tus antecedentes...</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- VARIATION EXPLANATION CARD (RF-45) -->
+                                    <div class="card report-card hidden" id="ai-variation-card">
+                                        <h3>Explicación de Variaciones Significativas (RF-45)</h3>
+                                        <div class="variation-explanation-content" id="ai-variation-text">
+                                            <!-- Dynamically populated -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- RIGHT PANEL: PLANS & RECOMMENDATIONS -->
+                                <div class="ai-report-right">
+                                    
+                                    <!-- SPECIALIST RECOMMENDATION CARD (HU-08) -->
+                                    <div class="card specialist-card" id="ai-specialist-card">
+                                        <h3>Sugerencia de Especialista (HU-08)</h3>
+                                        <div class="specialist-box">
+                                            <span class="specialist-icon">🩺</span>
+                                            <div class="specialist-details">
+                                                <h4 id="ai-specialist-name">Médico General</h4>
+                                                <p id="ai-specialist-desc">Tus niveles se encuentran en rangos de control general habituales.</p>
+                                                <div class="specialist-disclaimer">
+                                                    <strong>Importante:</strong> La IA no emite diagnósticos médicos. Únicamente sugiere la consulta con el especialista más apropiado basado en las guías de salud.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- DETAILED PLANS -->
+                                    <div class="card plans-card">
+                                        <h3>Plan de Bienestar Personalizado (HU-07)</h3>
+                                        <p class="card-desc">Plan estructurado según tu perfil físico, objetivos clínicos y recomendaciones de las guías internacionales RAG.</p>
+
+                                        <div class="plan-blocks">
+                                            <div class="plan-block">
+                                                <div class="plan-block-header">
+                                                    <span class="block-icon">🏋️</span>
+                                                    <h4>Plan Deportivo y Ejercicio</h4>
+                                                </div>
+                                                <div class="plan-block-body" id="ai-plan-exercise">
+                                                    Cargando plan de actividad física...
+                                                </div>
+                                            </div>
+
+                                            <div class="plan-block">
+                                                <div class="plan-block-header">
+                                                    <span class="block-icon">🥗</span>
+                                                    <h4>Plan Alimenticio y Nutrición</h4>
+                                                </div>
+                                                <div class="plan-block-body" id="ai-plan-diet">
+                                                    Cargando plan de alimentación...
+                                                </div>
+                                            </div>
+
+                                            <div class="plan-block">
+                                                <div class="plan-block-header">
+                                                    <span class="block-icon">💧</span>
+                                                    <h4>Hidratación & Descanso</h4>
+                                                </div>
+                                                <div class="plan-block-body" id="ai-plan-lifestyle">
+                                                    Cargando sugerencias de estilo de vida...
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- RAG CLINICAL EVIDENCE CITATIONS -->
+                                    <div class="card citations-card">
+                                        <h3>Citas de Evidencia Clínica (RAG)</h3>
+                                        <p class="card-desc">Este informe ha sido orquestado contrastando tus resultados con la siguiente literatura médica indexada:</p>
+                                        <ul class="citation-list" id="ai-citations-list">
+                                            <!-- Dynamically populated -->
+                                        </ul>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- 5. DOCTOR VIEW -->
+                <section id="doctor-view" class="view-section">
+                    <div class="doctor-wrapper">
+                        
+                        <!-- PENDING LIST SIDEBAR -->
+                        <div class="doctor-sidebar">
+                            <div class="card doctor-nav-card">
+                                <h3>Exámenes para Validación (HU-11)</h3>
+                                <p class="card-desc">Lista de pacientes con reportes generados por la IA pendientes de firma y validación.</p>
+                                <div class="patients-list" id="doc-patients-list">
+                                    <!-- Populated dynamically -->
+                                    <div class="empty-patients">No hay reportes pendientes de validación.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VALIDATION WORKSPACE -->
+                        <div class="doctor-workspace">
+                            <!-- NO PATIENT SELECTED PLACEHOLDER -->
+                            <div id="doc-workspace-empty" class="card empty-state-card">
+                                <span class="empty-icon">🩺</span>
+                                <h3>Bandeja de Validación Médica</h3>
+                                <p>Selecciona un paciente de la lista de la izquierda para revisar, modificar y aprobar el informe clínico y el plan de bienestar generado por el Motor de IA.</p>
+                            </div>
+
+                            <!-- WORKSPACE CONTENT -->
+                            <div id="doc-workspace-content" class="hidden">
+                                <div class="card patient-summary-card">
+                                    <div class="patient-header">
+                                        <div>
+                                            <h3 id="doc-patient-name">Nombre Paciente</h3>
+                                            <p class="patient-meta-desc" id="doc-patient-meta">Edad: 42 años | Sexo: M | Peso: 78kg | IMC: 25.4</p>
+                                        </div>
+                                        <div class="patient-actions">
+                                            <button class="btn btn-primary" id="btn-doc-approve">Aprobar y Liberar a Paciente</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- ANTECEDENTES Y RESTRICCIONES DETECTADAS -->
+                                    <div class="patient-antecedents-grid">
+                                        <div class="antecedent-item">
+                                            <strong>Objetivo:</strong>
+                                            <span id="doc-patient-goal">Perder peso</span>
+                                        </div>
+                                        <div class="antecedent-item">
+                                            <strong>Enfermedades:</strong>
+                                            <span id="doc-patient-diseases">Ninguna</span>
+                                        </div>
+                                        <div class="antecedent-item">
+                                            <strong>Medicamentos:</strong>
+                                            <span id="doc-patient-meds">Ninguno</span>
+                                        </div>
+                                        <div class="antecedent-item">
+                                            <strong>Restricciones Físicas:</strong>
+                                            <span id="doc-patient-injuries" class="text-danger">Ninguna</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ALERTS AND RULES ENGINE INTERVENTIONS -->
+                                <div class="card rule-alerts-card" id="doc-rules-card">
+                                    <h3>Intervención del Motor de Reglas Clínicas</h3>
+                                    <div class="rules-alerts-list" id="doc-rules-list">
+                                        <!-- Dynamically generated list of triggered alerts -->
+                                    </div>
+                                </div>
+
+                                <div class="doctor-edit-grid">
+                                    <!-- IA EXPLANATIONS REVIEW -->
+                                    <div class="card doc-edit-card">
+                                        <h3>Revisión de Explicaciones</h3>
+                                        <div class="form-group">
+                                            <label for="doc-edit-easy">Explicación Sencilla</label>
+                                            <textarea id="doc-edit-easy" rows="6"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="doc-edit-technical">Explicación Técnica</label>
+                                            <textarea id="doc-edit-technical" rows="6"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="doc-edit-risks">Factores de Riesgo</label>
+                                            <textarea id="doc-edit-risks" rows="4"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <!-- IA PLANS REVIEW -->
+                                    <div class="card doc-edit-card">
+                                        <h3>Revisión de Planes y Especialista</h3>
+                                        <div class="form-group">
+                                            <label for="doc-edit-specialist">Especialista Recomendado</label>
+                                            <select id="doc-edit-specialist">
+                                                <option value="Médico General">Médico General</option>
+                                                <option value="Cardiólogo">Cardiólogo</option>
+                                                <option value="Endocrinólogo">Endocrinólogo</option>
+                                                <option value="Nefrólogo">Nefrólogo</option>
+                                                <option value="Hematólogo">Hematólogo</option>
+                                                <option value="Medicina Deportiva">Medicina Deportiva</option>
+                                                <option value="Nutricionista">Nutricionista</option>
+                                                <option value="Psiquiatra / Psicólogo">Psiquiatra / Psicólogo</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="doc-edit-exercise">Plan de Ejercicio</label>
+                                            <textarea id="doc-edit-exercise" rows="5"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="doc-edit-diet">Plan Nutricional</label>
+                                            <textarea id="doc-edit-diet" rows="5"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="doc-edit-lifestyle">Hidratación & Descanso</label>
+                                            <textarea id="doc-edit-lifestyle" rows="4"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- 6. AUDIT VIEW -->
+                <section id="audit-view" class="view-section">
+                    <div class="audit-wrapper">
+                        <div class="card audit-card">
+                            <div class="card-header-btn">
+                                <div>
+                                    <h3>Consola de Auditoría de Seguridad (HU-05 / Sec 4.4)</h3>
+                                    <p class="card-desc">Historial inmutable de auditoría del sistema con registro de accesos, descargas, cambios de perfil, recomendaciones generadas y firmas de validación.</p>
+                                </div>
+                                <button class="btn btn-outline btn-sm" id="btn-export-audit">Exportar Logs (CSV)</button>
+                            </div>
+                            
+                            <div class="table-responsive margin-top-md">
+                                <table class="clinical-table audit-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>ID Evento</th>
+                                            <th>Usuario / Rol</th>
+                                            <th>Acción</th>
+                                            <th>Descripción detallada</th>
+                                            <th>Código Hash de Integridad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="audit-table-tbody">
+                                        <!-- Dynamically generated rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- PRIVACY DATA TERMS CONSENT MODAL -->
+    <div id="consent-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3>Consentimiento de Tratamiento de Datos Clínicos</h3>
+            <div class="modal-body-content">
+                <p>En cumplimiento con las normativas nacionales e internacionales de protección de datos de salud y la Ley de Habeas Data, le informamos sobre el tratamiento de su información médica:</p>
+                
+                <ol>
+                    <li><strong>Finalidad del Tratamiento:</strong> Los datos biométricos, antecedentes clínicos y resultados de exámenes cargados serán utilizados exclusivamente para generar gráficos de tendencias y planes personalizados de salud.</li>
+                    <li><strong>Protección de Datos:</strong> Su información es almacenada de forma cifrada utilizando algoritmos criptográficos robustos de grado militar (AES-256 en reposo) y transmitida de forma segura (TLS 1.3).</li>
+                    <li><strong>Control de Acceso (RBAC):</strong> Solo usted y el personal médico que usted autorice tendrán acceso a ver su historia clínica, respetando el principio del mínimo privilegio.</li>
+                    <li><strong>Derechos de Acceso, Rectificación y Supresión:</strong> Usted tiene derecho a acceder a sus datos, corregir posibles errores de OCR detectados, descargar su historial completo y revocar su consentimiento eliminando su cuenta de forma definitiva en cualquier momento.</li>
+                    <li><strong>Anonimización:</strong> HealthAnalytics AI se reserva el derecho de procesar datos completamente anonimizados con fines estadísticos y de mejora en la precisión de los modelos, garantizando que sea imposible asociar dicha información a su identidad.</li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btn-accept-consent-modal">Entendido y Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMAR ELIMINACIÓN DE DATOS (REINICIAR DE CERO) -->
+    <div id="modal-clear-data" class="modal-overlay hidden">
+        <div class="modal-card modal-warning-card">
+            <div class="modal-header">
+                <h3>⚠️ Confirmar Eliminación de Datos</h3>
+                <button id="btn-close-clear-modal" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body-content">
+                <p><strong>¿Deseas eliminar permanentemente toda tu información clínica actual?</strong></p>
+                <p>Se borrarán los exámenes cargados, historial de métricas, alertas y configuraciones de esta cuenta. Esta acción te permitirá <strong>cargar tu información de cero</strong>.</p>
+                <div class="alert-box alert-danger">
+                    <span>⚠️ Esta acción no se puede deshacer. Si deseas guardar una copia de respaldo antes de continuar, te recomendamos usar el botón <strong>"Exportar Excel"</strong>.</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-cancel-clear-data" class="btn btn-outline">Cancelar</button>
+                <button id="btn-confirm-clear-data" class="btn btn-danger">Sí, Eliminar y Empezar de Cero</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

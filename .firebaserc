@@ -1,0 +1,22 @@
+{
+  "projects": {
+    "staging": "health-analytics-staging",
+    "production": "health-analytics-prod"
+  },
+  "targets": {
+    "health-analytics-staging": {
+      "hosting": {
+        "staging": [
+          "health-analytics-staging"
+        ]
+      }
+    },
+    "health-analytics-prod": {
+      "hosting": {
+        "production": [
+          "health-analytics-prod"
+        ]
+      }
+    }
+  }
+}

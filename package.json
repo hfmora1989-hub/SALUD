@@ -1,0 +1,27 @@
+{
+  "name": "health-analytics-ai",
+  "version": "1.0.0",
+  "description": "Plataforma Inteligente de Gestión & Analítica de Salud con Inteligencia Artificial",
+  "main": "app.js",
+  "scripts": {
+    "start": "npx local-server .",
+    "serve": "firebase serve --only hosting",
+    "deploy:staging": "firebase deploy --only hosting:staging",
+    "deploy:prod": "firebase deploy --only hosting:production",
+    "version:bump": "npm version patch"
+  },
+  "keywords": [
+    "health",
+    "analytics",
+    "ai",
+    "medical-exams",
+    "ocr",
+    "firebase",
+    "dashboard"
+  ],
+  "author": "HealthAnalytics Team",
+  "license": "MIT",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
