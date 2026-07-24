@@ -17,7 +17,7 @@
     </script>
     <!-- SheetJS (XLSX) para exportar historial clínico a Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=1.0.10">
+    <link rel="stylesheet" href="styles.css?v=1.0.11">
 </head>
 <body class="dark-theme">
     
@@ -27,6 +27,60 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- EMAIL CONFIRMATION MODAL -->
+    
+    <!-- GOOGLE OAUTH POPUP SIMULATOR MODAL -->
+    <div id="google-oauth-modal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 440px; background: #FFFFFF; border-radius: 12px; padding: 28px; color: #1F2937; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <!-- GOOGLE BRAND HEADER -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <svg width="40" height="40" viewBox="0 0 24 24" style="margin-bottom: 8px;">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #111827;">Iniciar Sesión con Google</h3>
+                <p style="margin: 4px 0 0 0; color: #6B7280; font-size: 0.88rem;">Selecciona una cuenta para continuar en <strong>HealthAnalytics AI</strong></p>
+            </div>
+
+            <!-- ACCOUNTS SELECTOR LIST -->
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                <div id="btn-select-google-account-1" class="google-acc-item" style="display: flex; align-items: center; gap: 12px; border: 1px solid #E5E7EB; border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; background: #F9FAFB;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #4285F4; color: #FFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">G</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #111827; font-size: 0.95rem;" id="google-acc-name-1">Usuario Google</div>
+                        <div style="color: #6B7280; font-size: 0.83rem;" id="google-acc-email-1">usuario.google@gmail.com</div>
+                    </div>
+                    <span style="color: #9CA3AF; font-size: 1.2rem;">›</span>
+                </div>
+
+                <div id="btn-select-google-account-custom" class="google-acc-item" style="display: flex; align-items: center; gap: 12px; border: 1px dashed #9CA3AF; border-radius: 8px; padding: 12px; cursor: pointer; background: #FFF;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #F3F4F6; color: #4B5563; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">+</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #374151; font-size: 0.9rem;">Usar otra cuenta de Google</div>
+                        <div style="color: #9CA3AF; font-size: 0.8rem;">Ingresar tu correo @gmail.com</div>
+                    </div>
+                </div>
+
+                <!-- CUSTOM GOOGLE INPUT (HIDDEN INITIALLY) -->
+                <div id="custom-google-input-box" class="hidden" style="margin-top: 8px; background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB;">
+                    <label for="custom-google-email" style="font-size: 0.82rem; color: #4B5563; font-weight: 600; display: block; margin-bottom: 4px;">Ingresa tu correo de Google:</label>
+                    <input type="email" id="custom-google-email" placeholder="ejemplo@gmail.com" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #D1D5DB; margin-bottom: 8px; color: #111827; font-size: 0.9rem; background: #FFF;">
+                    <button type="button" id="btn-submit-custom-google" class="btn btn-primary btn-block" style="background: #4285F4; border: none; color: #fff; font-weight: 600; padding: 10px; border-radius: 6px; cursor: pointer; width:100%;">Continuar con esta Cuenta</button>
+                </div>
+            </div>
+
+            <div style="font-size: 0.78rem; color: #9CA3AF; text-align: center; border-top: 1px solid #F3F4F6; padding-top: 12px;">
+                Para continuar, Google compartirá tu nombre, dirección de correo electrónico e imagen de perfil con HealthAnalytics AI.
+            </div>
+
+            <div style="text-align: center; margin-top: 14px;">
+                <button type="button" id="btn-close-google-modal" style="background: none; border: none; color: #6B7280; font-size: 0.85rem; cursor: pointer; font-weight: 600;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
     <div id="email-confirmation-modal" class="modal-overlay hidden">
         <div class="modal-card" style="max-width: 580px; background: #0F172A; border: 1px solid #3B82F6; border-radius: 12px; padding: 24px; color: #FFF;">
             <div style="text-align: center; margin-bottom: 16px;">
@@ -260,7 +314,7 @@
                     <h2 id="view-title">Panel de Salud</h2>
                     <div class="env-version-container">
                         <span id="env-badge" class="env-badge staging" title="Ambiente actual configurado en Firebase">PRUEBAS</span>
-                        <span id="app-version-tag" class="version-tag" title="Control de versión SemVer">v1.0.10</span>
+                        <span id="app-version-tag" class="version-tag" title="Control de versión SemVer">v1.0.11</span>
                     </div>
                 </div>
                 <div class="topbar-right">
@@ -1237,6 +1291,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=1.0.10"></script>
+    <script src="app.js?v=1.0.11"></script>
 </body>
 </html>

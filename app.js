@@ -1870,12 +1870,40 @@ document.getElementById('btn-close-email-modal').addEventListener('click', () =>
     document.getElementById('email-confirmation-modal').classList.add('hidden');
 });
 
-// 3. Autenticación Directa con Google (Fix Inicio de Sesión Google)
-document.getElementById('btn-google-auth').addEventListener('click', () => {
+
+// 3. Autenticación Interactiva con Google (Modal de Selección de Cuenta Google)
+const btnGoogleAuth = document.getElementById('btn-google-auth');
+const googleModal = document.getElementById('google-oauth-modal');
+const btnCloseGoogleModal = document.getElementById('btn-close-google-modal');
+const btnGoogleAccount1 = document.getElementById('btn-select-google-account-1');
+const btnGoogleAccountCustom = document.getElementById('btn-select-google-account-custom');
+const customGoogleBox = document.getElementById('custom-google-input-box');
+const btnSubmitCustomGoogle = document.getElementById('btn-submit-custom-google');
+
+if (btnGoogleAuth && googleModal) {
+    btnGoogleAuth.addEventListener('click', () => {
+        if (customGoogleBox) customGoogleBox.classList.add('hidden');
+        googleModal.classList.remove('hidden');
+    });
+}
+
+if (btnCloseGoogleModal && googleModal) {
+    btnCloseGoogleModal.addEventListener('click', () => {
+        googleModal.classList.add('hidden');
+    });
+}
+
+if (btnGoogleAccountCustom && customGoogleBox) {
+    btnGoogleAccountCustom.addEventListener('click', () => {
+        customGoogleBox.classList.toggle('hidden');
+    });
+}
+
+function processGoogleOAuthLogin(email, name) {
     const googleUser = {
-        email: "google.user@gmail.com",
-        name: "Google Verified User",
-        password: "OAuthGoogleTokenSimulated",
+        email: email || "usuario.google@gmail.com",
+        name: name || (email ? email.split('@')[0] : "Usuario Google"),
+        password: "OAuthGoogleTokenSimulated_" + Date.now(),
         status: "active",
         termsAccepted: true,
         termsAcceptedAt: new Date().toISOString(),
@@ -1889,7 +1917,8 @@ document.getElementById('btn-google-auth').addEventListener('click', () => {
     loadUserData();
 
     logEvent("Autenticación con Google", `Inicio de sesión exitoso mediante OAuth Google para ${googleUser.email}.`);
-    
+
+    if (googleModal) googleModal.classList.add('hidden');
     document.getElementById('auth-view').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
     document.getElementById('user-display-email').innerText = googleUser.email;
@@ -1898,7 +1927,24 @@ document.getElementById('btn-google-auth').addEventListener('click', () => {
     showToast("Sesión con Google", `Ingreso exitoso con Google: ${googleUser.email}`, "success");
     switchActiveView('dashboard-view');
     updateUI();
-});
+}
+
+if (btnGoogleAccount1) {
+    btnGoogleAccount1.addEventListener('click', () => {
+        const email1 = document.getElementById('google-acc-email-1') ? document.getElementById('google-acc-email-1').innerText : "usuario.google@gmail.com";
+        const name1 = document.getElementById('google-acc-name-1') ? document.getElementById('google-acc-name-1').innerText : "Usuario Google";
+        processGoogleOAuthLogin(email1, name1);
+    });
+}
+
+if (btnSubmitCustomGoogle) {
+    btnSubmitCustomGoogle.addEventListener('click', () => {
+        const inputVal = document.getElementById('custom-google-email') ? document.getElementById('custom-google-email').value.trim() : "";
+        const emailToUse = inputVal || "usuario.google@gmail.com";
+        processGoogleOAuthLogin(emailToUse, emailToUse.split('@')[0]);
+    });
+}
+
 
 // 4. Formulario de Iniciar Sesión Existente
 const loginForm = document.getElementById('login-form');
@@ -3772,7 +3818,7 @@ function initEnvironmentAndVersion() {
     }
     
     if (versionTag) {
-        versionTag.innerText = "v1.0.10";
+        versionTag.innerText = "v1.0.11";
     }
 }
 
