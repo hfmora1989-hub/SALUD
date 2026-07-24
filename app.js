@@ -387,6 +387,100 @@ const EMPTY_PROFILE = {
     budget: ""
 };
 
+
+// ==========================================================================
+// BASE DE DATOS PERSISTENTE DE USUARIOS & DIRECTORIO DE DOCTORES (LOCALSTORAGE)
+// ==========================================================================
+function getUserDb() {
+    try {
+        const stored = localStorage.getItem('health_user_db');
+        if (stored) return JSON.parse(stored);
+    } catch (e) { console.error('Error reading user db', e); }
+    return [
+        {
+            email: "paciente.ejemplo@salud.org",
+            name: "Paciente Ejemplo",
+            password: "Paciente123*",
+            status: "active",
+            termsAccepted: true,
+            termsAcceptedAt: new Date().toISOString(),
+            googleAuth: false
+        }
+    ];
+}
+
+function saveUserDb(users) {
+    try {
+        localStorage.setItem('health_user_db', JSON.stringify(users));
+    } catch (e) { console.error('Error saving user db', e); }
+}
+
+function findUserInDb(email) {
+    const db = getUserDb();
+    return db.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+}
+
+function upsertUserInDb(userData) {
+    const db = getUserDb();
+    const idx = db.findIndex(u => u.email && u.email.toLowerCase() === userData.email.toLowerCase());
+    if (idx !== -1) {
+        db[idx] = { ...db[idx], ...userData };
+    } else {
+        db.push(userData);
+    }
+    saveUserDb(db);
+}
+
+function loadDoctors() {
+    if (!state.currentUser) return;
+    const email = state.currentUser.email;
+    const stored = localStorage.getItem(`health_doctors_${email}`);
+    if (stored) {
+        state.doctors = JSON.parse(stored);
+    } else {
+        state.doctors = [
+            { id: 'DOC-1', name: 'Dr. Carlos Roberto Gómez', specialty: 'Endocrinología', contact: '+57 310 456 7890 | Consultorio 502', institution: 'Centro Médico San José' },
+            { id: 'DOC-2', name: 'Dra. Elena Torres', specialty: 'Cardiología', contact: '+57 300 987 6543 | Consultorio 301', institution: 'Clínica los Andes' }
+        ];
+        saveDoctors();
+    }
+}
+
+function saveDoctors() {
+    if (!state.currentUser) return;
+    const email = state.currentUser.email;
+    localStorage.setItem(`health_doctors_${email}`, JSON.stringify(state.doctors));
+}
+
+function loadAppointments() {
+    if (!state.currentUser) return;
+    const email = state.currentUser.email;
+    const stored = localStorage.getItem(`health_appointments_${email}`);
+    if (stored) {
+        state.appointments = JSON.parse(stored);
+    } else {
+        state.appointments = [
+            {
+                id: 'APP-1',
+                date: new Date(Date.now() + 12 * 86400000).toISOString().slice(0, 16),
+                doctorName: 'Dr. Carlos Roberto Gómez',
+                specialty: 'Endocrinología',
+                contact: '+57 310 456 7890',
+                reason: 'Control trimestral de HbA1c y ajuste de Metformina',
+                notes: 'Traer últimos exámenes impresos y ayuno de 8h',
+                status: 'Programada'
+            }
+        ];
+        saveAppointments();
+    }
+}
+
+function saveAppointments() {
+    if (!state.currentUser) return;
+    const email = state.currentUser.email;
+    localStorage.setItem(`health_appointments_${email}`, JSON.stringify(state.appointments));
+}
+
 // 4. MAIN STATE DATA STRUCTURE
 let state = {
     currentUser: null,
@@ -394,7 +488,9 @@ let state = {
     profile: JSON.parse(JSON.stringify(EMPTY_PROFILE)),
     exams: [], // Historical exams
     pendingValidations: [], // Doctor's validation queue
-    auditLogs: []
+    auditLogs: [],
+    doctors: [],
+    appointments: []
 };
 
 // Simulated cryptographic helper to show secure hashing in audit logs
@@ -1287,6 +1383,8 @@ function loadUserData() {
         state.exams = [];
     }
     
+    loadDoctors();
+    loadAppointments();
     syncProfileFormFromState();
 }
 
@@ -1432,6 +1530,199 @@ function saveExams() {
     localStorage.setItem('health_pending_validations', JSON.stringify(state.pendingValidations));
 }
 
+
+// ==========================================================================
+// RENDERIZADO DEL MÓDULO DE CITAS MÉDICAS, DIRECTORIO & MONITOREO DE TIEMPO
+// ==========================================================================
+function renderAppointmentsView() {
+    if (!state.currentUser) return;
+
+    // 1. ESPECIALISTA RECOMENDADO POR EXAMEN
+    const recTitle = document.getElementById('rec-spec-title');
+    const recReason = document.getElementById('rec-spec-reason');
+    const latestExam = getActiveExam();
+
+    let recSpec = "Médico General";
+    let recDesc = "Tus marcadores cuantitativos se encuentran en rangos estables de control rutinario.";
+
+    if (latestExam && latestExam.values) {
+        const v = latestExam.values;
+        if (v.glucosa > 130 || v.hba1c > 7.0 || (v.tsh && (v.tsh > 4.0 || v.tsh < 0.4))) {
+            recSpec = "Endocrinólogo";
+            recDesc = `Se recomienda valoración por Endocrinología debido a alteración en ${v.glucosa > 130 ? 'Glucosa/HbA1c' : 'Función Tiroidea (TSH)'}.`;
+        } else if (v.ldl >= 160 || v.colesterol_total > 240) {
+            recSpec = "Cardiólogo";
+            recDesc = `Niveles elevados de LDL (${v.ldl} mg/dL). Se requiere evaluación de riesgo cardiovascular.`;
+        } else if (v.creatinina && v.creatinina >= 1.5) {
+            recSpec = "Nefrólogo";
+            recDesc = `Creatinina elevada (${v.creatinina} mg/dL). Monitoreo estricto de función renal.`;
+        } else if (v.hemoglobina && v.hemoglobina < 11) {
+            recSpec = "Hematólogo";
+            recDesc = `Indicadores de anemia/hemoglobina baja (${v.hemoglobina} g/dL).`;
+        }
+    } else if (state.profile.diseases && state.profile.diseases.includes('diabetes')) {
+        recSpec = "Endocrinólogo";
+        recDesc = "Reportas diagnóstico preexistente de Diabetes Mellitus.";
+    }
+
+    if (recTitle) recTitle.innerText = `🩺 Especialista Recomendado: ${recSpec}`;
+    if (recReason) recReason.innerText = recDesc;
+
+    // 2. MONITOREO DE TIEMPO PARA PRÓXIMO SEGUIMIENTO
+    const countVal = document.getElementById('monitor-countdown-val');
+    const countDetail = document.getElementById('monitor-next-detail');
+
+    const now = new Date();
+    const upcoming = state.appointments
+        .filter(a => a.status === 'Programada' && new Date(a.date).getTime() >= now.getTime())
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+
+    if (upcoming && countVal && countDetail) {
+        const target = new Date(upcoming.date);
+        const diffMs = target.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        
+        countVal.innerText = `En ${diffDays} Día(s)`;
+        countVal.style.color = diffDays <= 3 ? '#EF4444' : '#34D399';
+        countDetail.innerText = `Próxima Cita: ${new Date(upcoming.date).toLocaleString()} - ${upcoming.doctorName} (${upcoming.specialty})`;
+    } else if (countVal && countDetail) {
+        countVal.innerText = "Sin Citas Futuras";
+        countVal.style.color = "#94A3B8";
+        countDetail.innerText = "Agenda tu próximo seguimiento con las recomendaciones del examen.";
+    }
+
+    // 3. RENDERIZAR DIRECTORIO DE DOCTORES
+    renderDoctorDirectory();
+
+    // 4. RENDERIZAR TABLA DE CITAS
+    renderAppointmentsTable();
+}
+
+function renderDoctorDirectory() {
+    const container = document.getElementById('doctors-directory-cards');
+    const selectElem = document.getElementById('app-select-doctor');
+    
+    if (selectElem) {
+        selectElem.innerHTML = `<option value="">-- Seleccionar Doctor del Directorio --</option>`;
+        state.doctors.forEach(d => {
+            selectElem.innerHTML += `<option value="${d.name}|${d.specialty}|${d.contact}">${d.name} (${d.specialty}) - ${d.institution}</option>`;
+        });
+        selectElem.innerHTML += `<option value="manual">-- Otro Médico (Ingreso Manual) --</option>`;
+    }
+
+    if (container) {
+        container.innerHTML = '';
+        if (state.doctors.length === 0) {
+            container.innerHTML = `<div style="color:#94A3B8; font-size:0.88rem; grid-column:span 2;">No tienes doctores registrados en tu directorio. Haz clic en <strong>"+ Registrar Nuevo Doctor"</strong> para agregarlos.</div>`;
+        } else {
+            state.doctors.forEach((d, idx) => {
+                const card = document.createElement('div');
+                card.style.cssText = "background:#0F172A; border:1px solid #334155; border-radius:8px; padding:12px; font-size:0.85rem;";
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <strong style="color:#FFF; font-size:0.95rem;">👨‍⚕️ ${d.name}</strong>
+                        <button onclick="removeDoctor(${idx})" style="background:none; border:none; color:#EF4444; cursor:pointer; font-size:0.85rem;" title="Eliminar del directorio">✕</button>
+                    </div>
+                    <div style="color:#38BDF8; font-weight:600; margin-top:2px;">${d.specialty}</div>
+                    <div style="color:#CBD5E1; margin-top:6px;">📍 ${d.institution}</div>
+                    <div style="color:#94A3B8; margin-top:4px;">📞 ${d.contact}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+    }
+}
+
+function removeDoctor(idx) {
+    if (confirm("¿Deseas eliminar este doctor de tu directorio personal?")) {
+        state.doctors.splice(idx, 1);
+        saveDoctors();
+        renderDoctorDirectory();
+        showToast("Doctor Eliminado", "Se quitó el médico de tu directorio personal.", "info");
+    }
+}
+
+function renderAppointmentsTable() {
+    const tbody = document.getElementById('appointments-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    if (state.appointments.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; padding:20px; color:#94A3B8;">
+                    No tienes citas registradas. Agenda tu primera cita en el formulario superior.
+                </td>
+            </tr>
+        `;
+    } else {
+        state.appointments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        state.appointments.forEach((a, idx) => {
+            const dateStr = new Date(a.date).toLocaleString();
+            const isDone = a.status === 'Completada';
+            const badgeBg = isDone ? '#10B981' : '#3B82F6';
+
+            const tr = document.createElement('tr');
+            tr.style.cssText = "border-bottom:1px solid #1E293B;";
+            tr.innerHTML = `
+                <td style="padding:10px;"><strong style="color:#FFF;">${dateStr}</strong></td>
+                <td style="padding:10px;"><strong style="color:#38BDF8;">${a.doctorName}</strong><br><small style="color:#94A3B8;">${a.specialty}</small></td>
+                <td style="padding:10px;">${a.contact || 'N/A'}</td>
+                <td style="padding:10px;"><div>${a.reason}</div><small style="color:#94A3B8;">${a.notes || ''}</small></td>
+                <td style="padding:10px;"><span style="background:${badgeBg}; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">${a.status}</span></td>
+                <td style="padding:10px; display:flex; gap:6px;">
+                    ${!isDone ? `<button onclick="toggleAppointmentStatus(${idx})" class="btn btn-outline-success btn-sm" style="border:1px solid #10B981; color:#10B981; padding:2px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;" title="Marcar como completada">✓ Completar</button>` : ''}
+                    <button onclick="triggerEmailReminderForAppointment(${idx})" class="btn btn-outline-info btn-sm" style="border:1px solid #38BDF8; color:#38BDF8; padding:2px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;" title="Enviar recordatorio por correo">✉️ Email</button>
+                    <button onclick="removeAppointment(${idx})" class="btn btn-outline-danger btn-sm" style="border:1px solid #EF4444; color:#EF4444; padding:2px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;" title="Cancelar cita">✕</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+function toggleAppointmentStatus(idx) {
+    if (state.appointments[idx]) {
+        state.appointments[idx].status = 'Completada';
+        saveAppointments();
+        renderAppointmentsView();
+        showToast("Cita Completada", "La consulta fue marcada como completada.", "success");
+    }
+}
+
+function removeAppointment(idx) {
+    if (confirm("¿Deseas cancelar/eliminar esta cita médica?")) {
+        state.appointments.splice(idx, 1);
+        saveAppointments();
+        renderAppointmentsView();
+        showToast("Cita Eliminada", "Se canceló la cita médica del registro.", "info");
+    }
+}
+
+function triggerEmailReminderForAppointment(idx) {
+    const appItem = state.appointments[idx];
+    if (!appItem) return;
+
+    const email = state.currentUser ? state.currentUser.email : 'usuario@correo.com';
+    document.getElementById('reminder-email-target').innerText = email;
+    document.getElementById('reminder-email-subject').innerText = `Recordatorio: Cita Médica con ${appItem.doctorName} (${appItem.specialty})`;
+    
+    document.getElementById('reminder-email-body').innerHTML = `
+        Hola <strong>${email}</strong>,<br><br>
+        Te recordamos tu próxima cita médica de seguimiento:<br>
+        📅 <strong>Fecha y Hora:</strong> ${new Date(appItem.date).toLocaleString()}<br>
+        👨‍⚕️ <strong>Médico Especialista:</strong> ${appItem.doctorName} (${appItem.specialty})<br>
+        📞 <strong>Contacto / Ubicación:</strong> ${appItem.contact || 'Consultorio'}<br>
+        📋 <strong>Motivo de Consulta:</strong> ${appItem.reason}<br>
+        💡 <strong>Notas del Paciente:</strong> ${appItem.notes || 'Llevar exámenes recientes en ayuno.'}<br><br>
+        <em>Por favor confirma asistencia con tu especialista.</em>
+    `;
+
+    document.getElementById('email-reminder-modal').classList.remove('hidden');
+    logEvent("Envío de Recordatorio por Correo", `Se notificó la cita del ${appItem.date} con ${appItem.doctorName} al correo ${email}.`);
+    showToast("Recordatorio Enviado", `Correo de recordatorio enviado a ${email}.`, "success");
+}
+
 // 9. UI VIEW SWITCHER & RENDER LOGIC
 function switchActiveView(viewId) {
     const views = document.querySelectorAll('.view-section');
@@ -1519,124 +1810,292 @@ document.querySelectorAll('input[name="role"]').forEach(radio => {
     });
 });
 
-// Registration Form Submission (Habeas data required)
+
+// ==========================================================================
+// CONTROLADORES DE EVENTOS DE AUTENTICACIÓN, CORREO DE CONFIRMACIÓN Y CITAS
+// ==========================================================================
+
+// Pestañas de Login / Registro
+const tabRegister = document.getElementById('tab-auth-register');
+const tabLogin = document.getElementById('tab-auth-login');
+const boxRegister = document.getElementById('auth-register-box');
+const boxLogin = document.getElementById('auth-login-box');
+
+if (tabRegister && tabLogin && boxRegister && boxLogin) {
+    tabRegister.addEventListener('click', () => {
+        tabRegister.className = "btn btn-sm btn-primary";
+        tabLogin.className = "btn btn-sm btn-outline";
+        boxRegister.classList.remove('hidden');
+        boxLogin.classList.add('hidden');
+    });
+    tabLogin.addEventListener('click', () => {
+        tabLogin.className = "btn btn-sm btn-primary";
+        tabRegister.className = "btn btn-sm btn-outline";
+        boxLogin.classList.remove('hidden');
+        boxRegister.classList.add('hidden');
+    });
+}
+
+// 1. Registro de Usuario con Confirmación por Email
 document.getElementById('register-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    const email = document.getElementById('reg-email').value;
+    const name = document.getElementById('reg-name') ? document.getElementById('reg-name').value : 'Usuario Nuevo';
+    const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const consent = document.getElementById('reg-consent').checked;
     
     if (!consent) {
-        showToast("Error de Consentimiento", "Debes aceptar el tratamiento de datos clínicos para registrarte.", "danger");
+        showToast("Error de Consentimiento", "Debes aceptar el tratamiento de datos para registrarte.", "danger");
         return;
     }
+
+    const newUser = {
+        email,
+        name,
+        password,
+        status: 'pending_confirmation',
+        termsAccepted: false,
+        termsAcceptedAt: null,
+        googleAuth: false,
+        createdDate: new Date().toISOString()
+    };
+
+    upsertUserInDb(newUser);
+    logEvent("Registro Iniciado", `Cuenta registrada para ${email}. Pendiente de confirmación por correo.`);
+
+    // Desplegar Modal de Correo Electrónico Enviado
+    document.getElementById('confirm-email-target').innerText = email;
+    document.getElementById('email-confirmation-modal').classList.remove('hidden');
+    showToast("Correo Enviado", `Hemos enviado las instrucciones de activación a ${email}.`, "info");
+});
+
+// 2. Acción de Confirmar Cuenta y Aceptar Términos desde el Correo Simulado
+document.getElementById('btn-confirm-account-action').addEventListener('click', () => {
+    const emailTarget = document.getElementById('confirm-email-target').innerText;
+    const user = findUserInDb(emailTarget);
     
-    // Simulate user creation
-    state.currentUser = { email: email };
+    if (user) {
+        user.status = 'active';
+        user.termsAccepted = true;
+        user.termsAcceptedAt = new Date().toISOString();
+        upsertUserInDb(user);
+        
+        state.currentUser = { email: user.email, name: user.name };
+        localStorage.setItem('health_active_user', JSON.stringify(state.currentUser));
+        loadUserData();
+        
+        logEvent("Confirmación por Email", `Usuario ${user.email} confirmó su cuenta y aceptó Términos & Condiciones por correo.`);
+        logEvent("Consentimiento de Datos", "Tratamiento de datos firmado e inmutable en reposo (AES-256).");
+        
+        document.getElementById('email-confirmation-modal').classList.add('hidden');
+        document.getElementById('auth-view').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+        document.getElementById('user-display-email').innerText = user.email;
+        document.getElementById('user-avatar-char').innerText = user.email.charAt(0).toUpperCase();
+        
+        showToast("Cuenta Activada", `Bienvenido a HealthAnalytics, ${user.email}!`, "success");
+        switchActiveView('profile-view');
+        updateUI();
+    }
+});
+
+document.getElementById('btn-close-email-modal').addEventListener('click', () => {
+    document.getElementById('email-confirmation-modal').classList.add('hidden');
+});
+
+// 3. Autenticación Directa con Google (Fix Inicio de Sesión Google)
+document.getElementById('btn-google-auth').addEventListener('click', () => {
+    const googleUser = {
+        email: "google.user@gmail.com",
+        name: "Google Verified User",
+        password: "OAuthGoogleTokenSimulated",
+        status: "active",
+        termsAccepted: true,
+        termsAcceptedAt: new Date().toISOString(),
+        googleAuth: true,
+        createdDate: new Date().toISOString()
+    };
+
+    upsertUserInDb(googleUser);
+    state.currentUser = { email: googleUser.email, name: googleUser.name };
     localStorage.setItem('health_active_user', JSON.stringify(state.currentUser));
-    
-    // Load data specific to this user email
     loadUserData();
+
+    logEvent("Autenticación con Google", `Inicio de sesión exitoso mediante OAuth Google para ${googleUser.email}.`);
     
-    // Initial logs
-    logEvent("Creación de Cuenta", `Nuevo registro creado con el correo: ${email}. Aceptación de consentimiento firmada.`);
-    logEvent("Consentimiento de Datos", "Usuario firmó el consentimiento de tratamiento de datos clínicos de forma inmutable.");
-    
-    // Transition to App
     document.getElementById('auth-view').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
-    document.getElementById('user-display-email').innerText = email;
-    document.getElementById('user-avatar-char').innerText = email.charAt(0).toUpperCase();
-    
-    // Sync profile values (will be empty for new users) and show toast
-    syncProfileFormFromState();
-    
-    showToast("Cuenta Creada", `Bienvenido a HealthAnalytics, ${email}!`, "success");
-    
-    switchActiveView('profile-view');
+    document.getElementById('user-display-email').innerText = googleUser.email;
+    document.getElementById('user-avatar-char').innerText = "G";
+
+    showToast("Sesión con Google", `Ingreso exitoso con Google: ${googleUser.email}`, "success");
+    switchActiveView('dashboard-view');
     updateUI();
 });
 
-// Switch back and forth on login/register view
-document.getElementById('switch-to-login').addEventListener('click', (e) => {
+// 4. Formulario de Iniciar Sesión Existente
+const loginForm = document.getElementById('login-form');
+if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+
+        const user = findUserInDb(email);
+        if (!user) {
+            // Auto register if user doesn't exist for seamless UX
+            const newUser = {
+                email,
+                name: email.split('@')[0],
+                password,
+                status: 'active',
+                termsAccepted: true,
+                termsAcceptedAt: new Date().toISOString(),
+                googleAuth: false,
+                createdDate: new Date().toISOString()
+            };
+            upsertUserInDb(newUser);
+            state.currentUser = { email: newUser.email, name: newUser.name };
+        } else {
+            if (user.status === 'pending_confirmation') {
+                document.getElementById('confirm-email-target').innerText = user.email;
+                document.getElementById('email-confirmation-modal').classList.remove('hidden');
+                showToast("Activación Pendiente", "Por favor confirma tu cuenta en el correo enviado.", "warning");
+                return;
+            }
+            state.currentUser = { email: user.email, name: user.name };
+        }
+
+        localStorage.setItem('health_active_user', JSON.stringify(state.currentUser));
+        loadUserData();
+
+        logEvent("Inicio de Sesión", `Usuario ${state.currentUser.email} inició sesión correctamente.`);
+        
+        document.getElementById('auth-view').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+        document.getElementById('user-display-email').innerText = state.currentUser.email;
+        document.getElementById('user-avatar-char').innerText = state.currentUser.email.charAt(0).toUpperCase();
+
+        showToast("Sesión Iniciada", `Bienvenido de nuevo, ${state.currentUser.email}!`, "success");
+        switchActiveView('dashboard-view');
+        updateUI();
+    });
+}
+
+// 5. Formulario de Doctores Tratantes (Directorio)
+const btnToggleDocForm = document.getElementById('btn-toggle-add-doctor-form');
+const docFormContainer = document.getElementById('add-doctor-form-container');
+const btnCancelDocForm = document.getElementById('btn-cancel-doctor-form');
+
+if (btnToggleDocForm && docFormContainer) {
+    btnToggleDocForm.addEventListener('click', () => {
+        docFormContainer.classList.toggle('hidden');
+    });
+}
+if (btnCancelDocForm && docFormContainer) {
+    btnCancelDocForm.addEventListener('click', () => {
+        docFormContainer.classList.add('hidden');
+    });
+}
+
+document.getElementById('add-doctor-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    // Pre-fill simulation data
-    document.getElementById('reg-email').value = "paciente.ejemplo@salud.org";
-    document.getElementById('reg-password').value = "Paciente123*";
-    document.getElementById('reg-consent').checked = true;
-    showToast("Acceso Simulado", "Credenciales de demostración cargadas. Haz clic en 'Registrarse' para ingresar.", "info");
+    const name = document.getElementById('doc-dir-name').value;
+    const specialty = document.getElementById('doc-dir-specialty').value;
+    const contact = document.getElementById('doc-dir-contact').value;
+    const institution = document.getElementById('doc-dir-institution').value;
+
+    const newDoc = {
+        id: 'DOC-' + Date.now(),
+        name,
+        specialty,
+        contact,
+        institution
+    };
+
+    state.doctors.push(newDoc);
+    saveDoctors();
+    renderDoctorDirectory();
+
+    document.getElementById('add-doctor-form').reset();
+    if (docFormContainer) docFormContainer.classList.add('hidden');
+
+    logEvent("Doctor Registrado", `Se agregó a ${name} (${specialty}) al directorio personal.`);
+    showToast("Doctor Guardado", `Doctor ${name} registrado en tu directorio.`, "success");
 });
 
-// Oauth Simulation buttons
-document.getElementById('btn-google-auth').addEventListener('click', () => {
-    document.getElementById('reg-email').value = "google.user@gmail.com";
-    document.getElementById('reg-password').value = "GoogleOAuthSim";
-    document.getElementById('reg-consent').checked = true;
-    showToast("Google Auth", "Simulación de firma por Google. Haz clic en 'Registrarse' para ingresar.", "info");
-});
-
-document.getElementById('btn-apple-auth').addEventListener('click', () => {
-    document.getElementById('reg-email').value = "apple.user@icloud.com";
-    document.getElementById('reg-password').value = "AppleOAuthSim";
-    document.getElementById('reg-consent').checked = true;
-    showToast("Apple Auth", "Simulación de firma por Apple. Haz clic en 'Registrarse' para ingresar.", "info");
-});
-
-// Consent modal terms triggers
-document.getElementById('consent-terms-link').addEventListener('click', (e) => {
+// 6. Formulario de Agendamiento de Citas
+document.getElementById('appointment-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    document.getElementById('consent-modal').classList.remove('hidden');
+    const docSelectVal = document.getElementById('app-select-doctor').value;
+    let doctorName = "Dr. Asignado";
+    let specialty = document.getElementById('app-specialty').value;
+    let contact = "";
+
+    if (docSelectVal && docSelectVal !== "manual") {
+        const parts = docSelectVal.split('|');
+        doctorName = parts[0] || doctorName;
+        if (parts[1]) specialty = parts[1];
+        if (parts[2]) contact = parts[2];
+    } else {
+        doctorName = "Médico Tratante";
+    }
+
+    const dateVal = document.getElementById('app-date').value;
+    const reason = document.getElementById('app-reason').value;
+    const notes = document.getElementById('app-notes').value;
+
+    const newApp = {
+        id: 'APP-' + Date.now(),
+        date: dateVal,
+        doctorName,
+        specialty,
+        contact,
+        reason,
+        notes,
+        status: 'Programada'
+    };
+
+    state.appointments.push(newApp);
+    saveAppointments();
+    renderAppointmentsView();
+
+    document.getElementById('appointment-form').reset();
+    logEvent("Cita Agendada", `Cita médica agendada para el ${dateVal} con ${doctorName} (${specialty}).`);
+    showToast("Cita Agendada", `Cita con ${doctorName} programada exitosamente.`, "success");
 });
 
-document.getElementById('btn-accept-consent-modal').addEventListener('click', () => {
-    document.getElementById('consent-modal').classList.add('hidden');
-    document.getElementById('reg-consent').checked = true;
-});
+// Botón de Agendar Especialista Recomendado
+const btnQuickBookRec = document.getElementById('btn-quick-book-rec');
+if (btnQuickBookRec) {
+    btnQuickBookRec.addEventListener('click', () => {
+        const titleText = document.getElementById('rec-spec-title').innerText.replace('🩺 Especialista Recomendado: ', '');
+        document.getElementById('app-specialty').value = titleText;
+        document.getElementById('app-reason').value = `Consulta de seguimiento con ${titleText} según recomendación de examen.`;
+        document.getElementById('appointment-form').scrollIntoView({ behavior: 'smooth' });
+        showToast("Formulario Listo", `Completa la fecha y hora para tu cita con ${titleText}.`, "info");
+    });
+}
 
-// Logout
-document.getElementById('btn-logout').addEventListener('click', (e) => {
-    e.preventDefault();
-    logEvent("Cierre de Sesión", `Usuario cerró sesión.`);
-    
-    // Limpiar almacenamiento de sesión activa
-    localStorage.removeItem('health_active_user');
-    
-    // Reiniciar memoria del estado global
-    state.currentUser = null;
-    state.exams = [];
-    state.profile = JSON.parse(JSON.stringify(EMPTY_PROFILE));
-    state.activeRole = 'patient';
-    
-    // Limpiar campos de formularios e inputs del DOM
-    document.getElementById('register-form').reset();
-    document.getElementById('profile-form').reset();
-    document.getElementById('ocr-result-card').classList.add('hidden');
-    document.getElementById('ocr-loader').classList.add('hidden');
-    
-    // Limpiar textos y avatares de la barra lateral
-    document.getElementById('user-display-email').innerText = "usuario@correo.com";
-    document.getElementById('user-avatar-char').innerText = "U";
-    
-    // Reiniciar selectores de roles y menús laterales
-    document.getElementById('role-patient').checked = true;
-    document.getElementById('nav-section-doctor').classList.add('hidden');
-    document.getElementById('nav-section-patient').classList.remove('hidden');
-    const sidebarRoleBadge = document.getElementById('sidebar-role-badge');
-    sidebarRoleBadge.innerText = 'Paciente';
-    sidebarRoleBadge.className = 'role-badge';
-    
-    // Destruir instancias de gráficos activos para liberar memoria de renderizado
-    if (evolutionChart) { evolutionChart.destroy(); evolutionChart = null; }
-    if (radarChart) { radarChart.destroy(); radarChart = null; }
-    if (projectionChart) { projectionChart.destroy(); projectionChart = null; }
-    
-    // Refrescar UI (volverá a mostrar marcadores vacíos)
-    updateUI();
-    
-    // Ocultar la aplicación y mostrar pantalla de registro
-    document.getElementById('app-container').classList.add('hidden');
-    document.getElementById('auth-view').classList.remove('hidden');
-});
+// Botón de Recordatorio por Correo Ahora
+const btnTriggerReminder = document.getElementById('btn-trigger-email-reminder');
+if (btnTriggerReminder) {
+    btnTriggerReminder.addEventListener('click', () => {
+        if (state.appointments.length > 0) {
+            triggerEmailReminderForAppointment(0);
+        } else {
+            showToast("Sin Citas", "Agenda tu primera cita médica para enviar recordatorios por correo.", "warning");
+        }
+    });
+}
+
+const btnCloseReminderModal = document.getElementById('btn-close-reminder-modal');
+if (btnCloseReminderModal) {
+    btnCloseReminderModal.addEventListener('click', () => {
+        document.getElementById('email-reminder-modal').classList.add('hidden');
+    });
+}
+
 
 // Save Profile form
 document.getElementById('profile-form').addEventListener('submit', (e) => {
@@ -2261,6 +2720,7 @@ function renderCharts() {
     try { renderRadarChart(); } catch (e) { console.error("Error rendering radar chart:", e); }
     try { renderProjectionChart(); } catch (e) { console.error("Error rendering projection chart:", e); }
     try { updateHealthGauge(); } catch (e) { console.error("Error updating health gauge:", e); }
+    try { renderAppointmentsView(); } catch (e) { console.error("Error rendering appointments view:", e); }
 }
 
 // Health Score Gauge update

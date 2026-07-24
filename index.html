@@ -22,7 +22,71 @@
 <body class="dark-theme">
     
     <!-- NOTIFICATION SYSTEM -->
+    
+    <!-- NOTIFICATION SYSTEM -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- EMAIL CONFIRMATION MODAL -->
+    <div id="email-confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 580px; background: #0F172A; border: 1px solid #3B82F6; border-radius: 12px; padding: 24px; color: #FFF;">
+            <div style="text-align: center; margin-bottom: 16px;">
+                <span style="font-size: 3rem;">📩</span>
+                <h3 style="margin: 8px 0; color: #38BDF8;">Correo de Activación y Aceptación de Términos Enviado</h3>
+                <p style="color: #94A3B8; font-size: 0.9rem;">Hemos enviado el correo de confirmación de cuenta a tu dirección de correo electrónico.</p>
+            </div>
+
+            <div style="background: #1E293B; border: 1px dashed #334155; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 0.88rem;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 8px; color: #94A3B8;">
+                    <span><strong>De:</strong> no-reply@healthanalytics.ai</span>
+                    <span><strong>Para:</strong> <span id="confirm-email-target">usuario@correo.com</span></span>
+                </div>
+                <div style="font-weight: 600; color: #FFF; margin-bottom: 6px;">Asunto: Confirmación de Cuenta y Firma de Tratamiento de Datos Clínicos</div>
+                <p style="color: #CBD5E1; line-height: 1.5; margin: 0 0 12px 0;">
+                    Bienvenido a <strong>HealthAnalytics AI</strong>. Para activar tu cuenta de forma segura y comenzar a gestionar tus exámenes y citas médicas, por favor confirma tu email y acepta los Términos y Condiciones de Habeas Data Clínico.
+                </p>
+                <div style="background: #0F172A; padding: 10px; border-radius: 6px; border-left: 3px solid #10B981; color: #A7F3D0; font-size: 0.8rem; margin-bottom: 12px;">
+                    ✓ Aceptación inmutable de la ley de protección de datos personales y confidencialidad médica (AES-256).
+                </div>
+                <button id="btn-confirm-account-action" class="btn btn-success btn-block" style="background: #10B981; border: none; padding: 12px; font-size: 0.95rem; font-weight: 700; border-radius: 8px; cursor: pointer; color:#fff; width:100%;">
+                    ✅ Confirmar Mi Cuenta y Aceptar Términos & Condiciones
+                </button>
+            </div>
+
+            <div style="text-align: center;">
+                <button id="btn-close-email-modal" class="btn btn-outline btn-sm">Cerrar (Verificar más tarde)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EMAIL REMINDER MODAL SIMULATOR -->
+    <div id="email-reminder-modal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 580px; background: #0F172A; border: 1px solid #0EA5E9; border-radius: 12px; padding: 24px; color: #FFF;">
+            <div style="text-align: center; margin-bottom: 16px;">
+                <span style="font-size: 3rem;">✉️</span>
+                <h3 style="margin: 8px 0; color: #38BDF8;">Recordatorio Automático Enviado por Correo</h3>
+                <p style="color: #94A3B8; font-size: 0.9rem;">Se ha enviado la notificación de seguimiento al correo del paciente.</p>
+            </div>
+
+            <div style="background: #1E293B; border: 1px dashed #334155; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 0.88rem;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 8px; color: #94A3B8;">
+                    <span><strong>De:</strong> recordatorios@healthanalytics.ai</span>
+                    <span><strong>Para:</strong> <span id="reminder-email-target">usuario@correo.com</span></span>
+                </div>
+                <div style="font-weight: 600; color: #FFF; margin-bottom: 6px;" id="reminder-email-subject">Asunto: Recordatorio de Próxima Cita Médica y Seguimiento de Salud</div>
+                <div id="reminder-email-body" style="color: #CBD5E1; line-height: 1.5; margin: 0 0 12px 0;">
+                    <!-- Populated dynamically -->
+                </div>
+                <div style="background: #0F172A; padding: 10px; border-radius: 6px; border-left: 3px solid #0EA5E9; color: #7DD3FC; font-size: 0.8rem;">
+                    ℹ️ Notificación automatizada generada según el cronograma de seguimiento de HealthAnalytics AI.
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button id="btn-close-reminder-modal" class="btn btn-primary btn-sm" style="background: #0EA5E9; border: none; padding: 8px 20px; font-weight: 600; border-radius: 6px; cursor: pointer; color: #fff;">Entendido</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- REGISTER & LOGIN VIEW -->
     <div id="auth-view" class="view auth-container">
@@ -59,45 +123,69 @@
                 </div>
             </div>
             <div class="auth-form-panel">
-                <div class="auth-header">
-                    <h2>Crear Cuenta</h2>
-                    <p>Comienza tu camino hacia una mejor salud hoy.</p>
+                <div class="auth-tabs" style="display: flex; gap: 8px; margin-bottom: 1.2rem; background: #0F172A; padding: 4px; border-radius: 8px; border: 1px solid #334155;">
+                    <button type="button" id="tab-auth-register" class="btn btn-sm btn-primary" style="flex: 1; border-radius: 6px; font-weight: 600;">Crear Cuenta</button>
+                    <button type="button" id="tab-auth-login" class="btn btn-sm btn-outline" style="flex: 1; border-radius: 6px; font-weight: 600;">Iniciar Sesión</button>
                 </div>
-                <form id="register-form" class="auth-form" onsubmit="event.preventDefault();">
-                    <div class="form-group">
-                        <label for="reg-email">Correo Electrónico</label>
-                        <input type="email" id="reg-email" placeholder="ejemplo@correo.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-password">Contraseña</label>
-                        <input type="password" id="reg-password" placeholder="••••••••" required>
-                    </div>
-                    <div class="form-group consent-checkbox">
-                        <input type="checkbox" id="reg-consent" required>
-                        <label for="reg-consent">
-                            Acepto el <a href="#" id="consent-terms-link">Tratamiento de Datos Personales y Médicos</a> de acuerdo con la regulación aplicable (Habas Data/Privacidad).
-                        </label>
-                    </div>
-                    <button type="submit" id="btn-register" class="btn btn-primary btn-block">Registrarse y Crear Cuenta</button>
-                </form>
 
-                <div class="auth-divider">
-                    <span>O registrarse con</span>
+                <!-- REGISTER FORM BOX -->
+                <div id="auth-register-box">
+                    <div class="auth-header">
+                        <h2>Crear Cuenta</h2>
+                        <p>Comienza tu camino hacia una mejor salud hoy.</p>
+                    </div>
+                    <form id="register-form" class="auth-form" onsubmit="event.preventDefault();">
+                        <div class="form-group">
+                            <label for="reg-name">Nombre Completo</label>
+                            <input type="text" id="reg-name" placeholder="Ej. Juan Pérez" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-email">Correo Electrónico</label>
+                            <input type="email" id="reg-email" placeholder="ejemplo@correo.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-password">Contraseña</label>
+                            <input type="password" id="reg-password" placeholder="••••••••" required>
+                        </div>
+                        <div class="form-group consent-checkbox">
+                            <input type="checkbox" id="reg-consent" required>
+                            <label for="reg-consent">
+                                Acepto el <a href="#" id="consent-terms-link">Tratamiento de Datos Personales y Médicos</a> de acuerdo con la regulación aplicable (Habeas Data/Privacidad).
+                            </label>
+                        </div>
+                        <button type="submit" id="btn-register" class="btn btn-primary btn-block">Registrarse (Enviar Correo de Activación)</button>
+                    </form>
+                </div>
+
+                <!-- LOGIN FORM BOX -->
+                <div id="auth-login-box" class="hidden">
+                    <div class="auth-header">
+                        <h2>Iniciar Sesión</h2>
+                        <p>Ingresa con tu correo y contraseña registrados.</p>
+                    </div>
+                    <form id="login-form" class="auth-form" onsubmit="event.preventDefault();">
+                        <div class="form-group">
+                            <label for="login-email">Correo Electrónico</label>
+                            <input type="email" id="login-email" placeholder="ejemplo@correo.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Contraseña</label>
+                            <input type="password" id="login-password" placeholder="••••••••" required>
+                        </div>
+                        <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">Ingresar a la Plataforma</button>
+                    </form>
+                </div>
+
+                <div class="auth-divider" style="margin-top: 1rem;">
+                    <span>O continuar con</span>
                 </div>
 
                 <div class="auth-social-buttons">
-                    <button class="btn btn-outline" id="btn-google-auth">
-                        <span class="social-icon">Google</span>
-                    </button>
-                    <button class="btn btn-outline" id="btn-apple-auth">
-                        <span class="social-icon">Apple</span>
+                    <button class="btn btn-outline" id="btn-google-auth" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; border: 1px solid #4285F4; color:#FFF; background:#4285F4; font-weight:600; padding:10px;">
+                        <span>🌐</span> Iniciar Sesión con Google (Autenticación Directa)
                     </button>
                 </div>
 
-                <div class="auth-switch">
-                    ¿Ya tienes una cuenta? <a href="#" id="switch-to-login">Inicia sesión simulada</a>
-                </div>
-                
                 <div class="auth-reset-container" style="margin-top: 1.5rem; text-align: center; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
                     <button type="button" id="btn-reset-db" class="btn btn-outline btn-sm text-danger" style="width: 100%;">Restablecer Base de Datos del Sistema (Limpieza)</button>
                 </div>
@@ -137,6 +225,9 @@
                     </a>
                     <a href="#" class="nav-item" data-view="interpretation-view">
                         <span class="nav-icon">🧠</span> Informe de IA
+                    </a>
+                    <a href="#" class="nav-item" data-view="appointments-view">
+                        <span class="nav-icon">📅</span> Citas & Seguimiento
                     </a>
                 </div>
 
@@ -906,6 +997,166 @@
 
                     </div>
                 </section>
+
+                
+                <!-- 6. APPOINTMENTS & SPECIALISTS VIEW -->
+                <section id="appointments-view" class="view-section">
+                    <div class="appointments-wrapper" style="display: flex; flex-direction: column; gap: 20px;">
+                        
+                        <!-- TOP BANNER & ACTION BAR -->
+                        <div class="card" style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #0EA5E9; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                            <div>
+                                <h3 style="margin: 0; color: #38BDF8; font-size: 1.25rem;">📅 Gestión de Citas Médicas, Seguimiento & Directorio</h3>
+                                <p style="margin: 4px 0 0 0; color: #94A3B8; font-size: 0.88rem;">Monitorea tus próximas consultas, registra doctores de tu preferencia y recibe recordatorios automáticos por correo.</p>
+                            </div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button id="btn-trigger-email-reminder" class="btn btn-primary btn-sm" style="background: #0EA5E9; border: none; padding: 10px 16px; font-weight: 600; border-radius: 8px; cursor: pointer; color: #fff; display: inline-flex; align-items: center; gap: 6px;" title="Disparar simulación de correo de recordatorio para la próxima cita">
+                                    <span>✉️</span> Enviar Recordatorio por Correo Ahora
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <!-- BLOCK 1: RECOMMENDED SPECIALIST FROM EXAM -->
+                            <div class="card" style="background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 20px;">
+                                <h3 style="margin-top: 0; color: #F59E0B; display: flex; align-items: center; gap: 8px; font-size: 1.05rem;">
+                                    🩺 1. Especialista Recomendado por tu Examen Reciente
+                                </h3>
+                                <div id="recommended-specialist-box" style="background: #0F172A; border-left: 4px solid #F59E0B; padding: 14px; border-radius: 8px; margin-top: 12px;">
+                                    <h4 id="rec-spec-title" style="margin: 0 0 6px 0; color: #FFF;">Cargando sugerencia...</h4>
+                                    <p id="rec-spec-reason" style="margin: 0 0 12px 0; color: #CBD5E1; font-size: 0.88rem;">Analizando marcadores cuantitativos...</p>
+                                    <button id="btn-quick-book-rec" class="btn btn-warning btn-sm" style="background: #F59E0B; border: none; color: #0F172A; font-weight: 700; border-radius: 6px; padding: 8px 14px; cursor: pointer;">
+                                        ➕ Agendar Cita con este Especialista
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- BLOCK 2: TIME MONITOR COUNTDOWN -->
+                            <div class="card" style="background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 20px;">
+                                <h3 style="margin-top: 0; color: #10B981; display: flex; align-items: center; gap: 8px; font-size: 1.05rem;">
+                                    ⏱️ 2. Monitoreo del Tiempo para el Próximo Seguimiento
+                                </h3>
+                                <div id="appointment-time-monitor-box" style="background: #0F172A; border-left: 4px solid #10B981; padding: 14px; border-radius: 8px; margin-top: 12px;">
+                                    <div style="font-size: 0.8rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">Estado del Seguimiento:</div>
+                                    <div id="monitor-countdown-val" style="font-size: 1.6rem; font-weight: 800; color: #34D399; margin: 4px 0;">Sin Citas Programadas</div>
+                                    <p id="monitor-next-detail" style="margin: 0; color: #CBD5E1; font-size: 0.85rem;">Registra tu próxima cita o agéndala desde las sugerencias.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BLOCK 3: DOCTOR DIRECTORY DATABASE -->
+                        <div class="card" style="background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                                <div>
+                                    <h3 style="margin: 0; color: #38BDF8;">👨‍⚕️ 3. Directorio & Base de Datos de Doctores Tratantes</h3>
+                                    <p style="margin: 4px 0 0 0; color: #94A3B8; font-size: 0.85rem;">Registra tus médicos frecuentes (nombre, especialidad, contacto e institución) para pedir citas rápidamente.</p>
+                                </div>
+                                <button id="btn-toggle-add-doctor-form" class="btn btn-outline-info btn-sm" style="border: 1px solid #38BDF8; color: #38BDF8; background: transparent; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    + Registrar Nuevo Doctor
+                                </button>
+                            </div>
+
+                            <!-- ADD DOCTOR FORM (COLLAPSIBLE) -->
+                            <div id="add-doctor-form-container" class="hidden" style="background: #0F172A; border: 1px dashed #38BDF8; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                                <h4 style="margin-top: 0; color: #FFF;">Formulario: Agregar Doctor al Directorio</h4>
+                                <form id="add-doctor-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                    <div class="form-group">
+                                        <label for="doc-dir-name" style="color: #CBD5E1; font-size: 0.85rem;">Nombre Completo del Doctor</label>
+                                        <input type="text" id="doc-dir-name" placeholder="Ej. Dr. Carlos Roberto Gómez" required style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="doc-dir-specialty" style="color: #CBD5E1; font-size: 0.85rem;">Especialidad Médica</label>
+                                        <select id="doc-dir-specialty" required style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                            <option value="Endocrinología">Endocrinología</option>
+                                            <option value="Cardiología">Cardiología</option>
+                                            <option value="Medicina General / Interna">Medicina General / Interna</option>
+                                            <option value="Neftología">Neftología</option>
+                                            <option value="Hematología">Hematología</option>
+                                            <option value="Medicina Deportiva / Fisioterapia">Medicina Deportiva / Fisioterapia</option>
+                                            <option value="Nutrición y Dietética">Nutrición y Dietética</option>
+                                            <option value="Psiquiatría / Psicología">Psiquiatría / Psicología</option>
+                                            <option value="Otra Especialidad">Otra Especialidad</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="doc-dir-contact" style="color: #CBD5E1; font-size: 0.85rem;">Contacto / Teléfono / Consultorio</label>
+                                        <input type="text" id="doc-dir-contact" placeholder="Ej. +57 310 456 7890 | Consultorio 502" required style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="doc-dir-institution" style="color: #CBD5E1; font-size: 0.85rem;">Clínica / Institución Médica</label>
+                                        <input type="text" id="doc-dir-institution" placeholder="Ej. Centro Médico San José / Clínica los Andes" required style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                    </div>
+                                    <div style="grid-column: span 2; display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px;">
+                                        <button type="button" id="btn-cancel-doctor-form" class="btn btn-outline btn-sm">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary btn-sm" style="background: #38BDF8; color: #0F172A; font-weight: 700; border: none; padding: 8px 16px; border-radius: 6px;">Guardar Doctor</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- DOCTORS LIST CARDS -->
+                            <div id="doctors-directory-cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+
+                        <!-- BLOCK 4: BOOK APPOINTMENT & HISTORY -->
+                        <div class="card" style="background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 20px;">
+                            <h3 style="margin-top: 0; color: #FFF; margin-bottom: 16px;">📋 4. Agendamiento e Historial de Citas Médicas</h3>
+                            
+                            <!-- ADD APPOINTMENT FORM -->
+                            <form id="appointment-form" style="background: #0F172A; padding: 16px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div class="form-group">
+                                    <label for="app-select-doctor" style="color: #CBD5E1; font-size: 0.85rem;">Seleccionar Doctor del Directorio (o Personalizado)</label>
+                                    <select id="app-select-doctor" style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                        <!-- Dynamically populated from state.doctors -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="app-date" style="color: #CBD5E1; font-size: 0.85rem;">Fecha y Hora de la Cita</label>
+                                    <input type="datetime-local" id="app-date" required style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="app-specialty" style="color: #CBD5E1; font-size: 0.85rem;">Especialidad Médica</label>
+                                    <input type="text" id="app-specialty" placeholder="Ej. Endocrinología" required style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="app-reason" style="color: #CBD5E1; font-size: 0.85rem;">Motivo de Consulta / Examen de Control</label>
+                                    <input type="text" id="app-reason" placeholder="Ej. Control trimestral de HbA1c y ajuste de Metformina" required style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff;">
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label for="app-notes" style="color: #CBD5E1; font-size: 0.85rem;">Notas del Paciente / Instrucciones del Médico</label>
+                                    <textarea id="app-notes" rows="2" placeholder="Ej. Llevar últimos exámenes impresos y ayuno de 8 horas." style="width: 100%; padding: 8px; border-radius: 6px; background: #1E293B; border: 1px solid #334155; color: #fff; font-family: inherit;"></textarea>
+                                </div>
+                                <div style="grid-column: span 2; display: flex; justify-content: flex-end;">
+                                    <button type="submit" class="btn btn-primary" style="background: #10B981; border: none; color: #fff; font-weight: 700; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                                        📅 Registrar Cita Médica
+                                    </button>
+                                </div>
+                            </form>
+
+                            <!-- APPOINTMENTS HISTORY TABLE -->
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem; color: #CBD5E1;">
+                                    <thead>
+                                        <tr style="background: #0F172A; text-align: left; border-bottom: 2px solid #334155;">
+                                            <th style="padding: 10px;">Fecha y Hora</th>
+                                            <th style="padding: 10px;">Especialista & Médico</th>
+                                            <th style="padding: 10px;">Contacto / Clínica</th>
+                                            <th style="padding: 10px;">Motivo & Notas</th>
+                                            <th style="padding: 10px;">Estado</th>
+                                            <th style="padding: 10px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="appointments-tbody">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
 
                 <!-- 6. AUDIT VIEW -->
                 <section id="audit-view" class="view-section">
