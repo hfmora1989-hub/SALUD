@@ -171,6 +171,102 @@ const CLINICAL_RANGES = {
             if (imc < 30.0) return { status: "Sobrepeso", state: "altered" };
             return { status: "Obesidad", state: "critical" };
         }
+    },
+    potasio: {
+        name: "Potasio en Suero",
+        unit: "mEq/L",
+        getNormalRange: (profile) => ({ min: 3.3, max: 5.1 }),
+        evaluate: (val, profile) => {
+            if (val < 3.3) return { status: "Alterado (Bajo)", state: "altered", note: "Hipopotasemia." };
+            if (val <= 5.1) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Hiperpotasemia." };
+        }
+    },
+    sodio: {
+        name: "Sodio en Suero",
+        unit: "mEq/L",
+        getNormalRange: (profile) => ({ min: 136.0, max: 145.0 }),
+        evaluate: (val, profile) => {
+            if (val < 136.0) return { status: "Alterado (Bajo)", state: "altered", note: "Hiponatremia." };
+            if (val <= 145.0) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Hipernatremia." };
+        }
+    },
+    alt_tgp: {
+        name: "Alanino Amino Transferasa (ALT / TGP)",
+        unit: "U/L",
+        getNormalRange: (profile) => ({ min: 5, max: 41 }),
+        evaluate: (val, profile) => {
+            if (val <= 41) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Posible alteración hepática o enzimática." };
+        }
+    },
+    ast_tgo: {
+        name: "Aspartato Amino Transferasa (AST / TGO)",
+        unit: "U/L",
+        getNormalRange: (profile) => ({ min: 0, max: 40 }),
+        evaluate: (val, profile) => {
+            if (val <= 40) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Elevación de transaminasas." };
+        }
+    },
+    ggt: {
+        name: "Gama Glutamil Transferasa (GGT)",
+        unit: "U/L",
+        getNormalRange: (profile) => ({ min: 10, max: 71 }),
+        evaluate: (val, profile) => {
+            if (val <= 71) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Indicador de estrés biliar o hepático." };
+        }
+    },
+    insulina: {
+        name: "Insulina Basal",
+        unit: "uUI/mL",
+        getNormalRange: (profile) => ({ min: 2.6, max: 24.9 }),
+        evaluate: (val, profile) => {
+            if (val < 2.6) return { status: "Alterado (Bajo)", state: "altered" };
+            if (val <= 24.9) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Posible hiperinsulinemia o resistencia a la insulina." };
+        }
+    },
+    psa: {
+        name: "Antígeno Prostático Específico (PSA)",
+        unit: "ng/mL",
+        getNormalRange: (profile) => ({ min: 0.0, max: 4.0 }),
+        evaluate: (val, profile) => {
+            if (val <= 4.0) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Requiere valoración urológica." };
+        }
+    },
+    t4_libre: {
+        name: "T4 Libre",
+        unit: "ng/dL",
+        getNormalRange: (profile) => ({ min: 0.92, max: 1.68 }),
+        evaluate: (val, profile) => {
+            if (val < 0.92) return { status: "Alterado (Bajo)", state: "altered" };
+            if (val <= 1.68) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered" };
+        }
+    },
+    acido_urico: {
+        name: "Ácido Úrico en Suero",
+        unit: "mg/dL",
+        getNormalRange: (profile) => ({ min: 3.4, max: 7.0 }),
+        evaluate: (val, profile) => {
+            if (val < 3.4) return { status: "Alterado (Bajo)", state: "altered" };
+            if (val <= 7.0) return { status: "Normal", state: "normal" };
+            return { status: "Alterado (Alto)", state: "altered", note: "Hiperuricemia. Riesgo de gota o nefrolitiasis." };
+        }
+    },
+    vitamina_b12: {
+        name: "Vitamina B12",
+        unit: "pg/mL",
+        getNormalRange: (profile) => ({ min: 197, max: 771 }),
+        evaluate: (val, profile) => {
+            if (val < 197) return { status: "Alterado (Bajo)", state: "altered", note: "Deficiencia de vitamina B12. Riesgo de anemia o neuropatía." };
+            if (val <= 771) return { status: "Normal", state: "normal" };
+            return { status: "Alto", state: "normal" };
+        }
     }
 };
 
@@ -275,25 +371,27 @@ const EXAM_PRESETS = {
     }
 };
 
+const EMPTY_PROFILE = {
+    age: "",
+    sex: "",
+    weight: "",
+    height: "",
+    pregnancy: "N",
+    activity: "",
+    diseases: [],
+    meds: "",
+    injuries: "",
+    goal: "",
+    diet: "",
+    gym: "",
+    budget: ""
+};
+
 // 4. MAIN STATE DATA STRUCTURE
 let state = {
     currentUser: null,
     activeRole: 'patient', // 'patient', 'doctor', 'auditor'
-    profile: {
-        age: 42,
-        sex: "M",
-        weight: 78,
-        height: 175,
-        pregnancy: "N",
-        activity: "moderado",
-        diseases: [],
-        meds: "",
-        injuries: "",
-        goal: "perder_peso",
-        diet: "ninguna",
-        gym: "mancuernas",
-        budget: "moderado"
-    },
+    profile: JSON.parse(JSON.stringify(EMPTY_PROFILE)),
     exams: [], // Historical exams
     pendingValidations: [], // Doctor's validation queue
     auditLogs: []
@@ -481,9 +579,9 @@ function runClinicalRulesEngine(examValues, profile) {
     }
 
     // TSH / Thyroid
-    if (examValues.tsh && (examValues.tsh > 10.0 || examValues.tsh < 0.1)) {
+    if (examValues.tsh && (examValues.tsh > 4.0 || examValues.tsh < 0.4)) {
         suggestedSpecialist = "Endocrinólogo";
-        specialistReason = "Valores de TSH críticamente alterados indicativos de disfunción tiroidea clínica.";
+        specialistReason = `Nivel de TSH alterado (${examValues.tsh} mIU/L). Se recomienda valoración por Endocrinología para estudio de función tiroidea.`;
     }
 
     // Anemia & Iron (Ferritina < 10 or Hemoglobina < 10)
@@ -513,7 +611,7 @@ function runClinicalRulesEngine(examValues, profile) {
         }
     }
     
-    if (profile.diseases && profile.diseases.includes('depresion')) {
+        if (profile.diseases && profile.diseases.includes('depresion')) {
         if (suggestedSpecialist === "Médico General") {
             suggestedSpecialist = "Psiquiatra / Psicólogo";
             specialistReason = "Paciente reporta diagnóstico activo de depresión o ansiedad.";
@@ -529,94 +627,638 @@ function runClinicalRulesEngine(examValues, profile) {
     };
 }
 
-// 7. ORQUESTADOR DE IA & MOCK LLM (CON FILTRADO DE SEGURIDAD)
-function orchestrateAiReport(profile, latestExam, rulesResult) {
-    logEvent("Orquestador IA", "Iniciando orquestación de informe clínico y plan de bienestar.");
 
-    // Retrieve citations from clinical guidelines based on patient's altered values
-    const citations = [];
-    const addedCitationsKeys = new Set();
 
-    if (latestExam.values.glucosa > 100 || latestExam.values.hba1c > 5.6) {
-        RAG_KNOWLEDGE.diabetes.forEach(c => citations.push(c));
-        addedCitationsKeys.add('diabetes');
-    }
-    if (profile.diseases.includes('hipertension') || latestExam.values.peso > 85) {
-        RAG_KNOWLEDGE.hipertension.forEach(c => citations.push(c));
-        addedCitationsKeys.add('hipertension');
-    }
-    if (latestExam.values.colesterol_total > 200 || latestExam.values.ldl > 100) {
-        RAG_KNOWLEDGE.dislipidemia.forEach(c => citations.push(c));
-        addedCitationsKeys.add('dislipidemia');
-    }
-    if (latestExam.values.hemoglobina < 12 || latestExam.values.ferritina < 20) {
-        RAG_KNOWLEDGE.anemia.forEach(c => citations.push(c));
-        addedCitationsKeys.add('anemia');
-    }
-    if (latestExam.values.creatinina > 1.2) {
-        RAG_KNOWLEDGE.renal.forEach(c => citations.push(c));
-        addedCitationsKeys.add('renal');
-    }
-    
-    // General health citation
-    RAG_KNOWLEDGE.general.forEach(c => citations.push(c));
+// ==========================================================================
+// MOTOR DE ANÁLISIS MULTIVARIABLE: ENFERMEDADES DE BASE Y MEDICAMENTOS
+// ==========================================================================
+function analyzeDiseasesAndMeds(profile = {}, examValues = {}) {
+    const diseases = Array.isArray(profile.diseases) ? profile.diseases : [];
+    const medsRaw = profile.meds || '';
+    const medsList = medsRaw.toLowerCase().split(/[,;\n]+/).map(m => m.trim()).filter(Boolean);
 
-    // SIMULATED MOCK LLM GENERATION:
-    // The LLM generates a draft response based on the patient variables.
-    
-    // We mock the first draft, which might contain unsafe guidelines (e.g. CrossFit for a hypertensive patient with Glucose 280)
-    let rawLlmProposal = {
-        easyExplanation: `Tus resultados muestran que tu glucosa está bastante elevada en ${latestExam.values.glucosa} mg/dL, lo cual requiere atención. Adicionalmente, los niveles de colesterol LDL están en ${latestExam.values.ldl} mg/dL. Esto significa que hay exceso de azúcares y grasas circulando en tu torrente sanguíneo. Lo positivo es que tu hemoglobina está estable y tus riñones se mantienen en un rango aceptable.`,
-        technicalExplanation: `El análisis sérico revela hiperglucemia franca en ayunas de ${latestExam.values.glucosa} mg/dL, correlacionado con una hemoglobina glicosilada (HbA1c) de ${latestExam.values.hba1c}%, indicativo de una baja sensibilidad periférica a la insulina o secreción insuficiente de células beta pancreáticas. Se observa dislipidemia aterogénica leve dada por LDL elevado y HDL disminuido en ${latestExam.values.hdl} mg/dL.`,
-        risks: `El descontrol glucémico crónico aumenta el riesgo de micro y macroangiopatías, incluyendo retinopatía y nefropatía. El LDL elevado acelera la formación de placas de ateroma en las arterias, elevando el riesgo de cardiopatía isquémica o infartos a mediano plazo.`,
-        
-        // UNSAFE PLAN PROPOSED BY LLM (Contains CrossFit and heavy weights despite glucose >250/hypertension)
-        exercisePlan: `Se recomienda iniciar de inmediato rutinas intensivas de acondicionamiento físico. Lo ideal es realizar CrossFit cinco veces por semana o sesiones de levantamiento de pesas de alta intensidad para quemar glucosa rápidamente y forzar al cuerpo a usar grasas. También puedes hacer sprints rápidos de velocidad.`,
-        
-        dietPlan: `Dieta hipocalórica. Desayuno: huevos revueltos con aguacate. Almuerzo: pechuga de pollo con ensalada verde y aceite de oliva. Cena: salmón a la plancha. Evitar jugos de frutas y pan blanco. Priorizar proteínas y grasas saludables.`,
-        lifestylePlan: `Tomar 2.5 litros de agua al día. Asegurar un ciclo de sueño regular de 7-8 horas. Meditar 10 minutos para reducir cortisol.`
-    };
+    const findings = [];
+    const medInteractions = [];
+    const safetyPrecautions = [];
 
-    // SAFETY ORCHESTRATOR GUARD:
-    // The orchestrator analyzes the LLM's draft and checks it against clinical rules/restrictions.
-    // If the rules restricted heavy exercise, and the LLM suggests CrossFit/sprints/high intensity, the Orchestrator REJECTS it and rewrites.
-    
-    let safetyTriggered = false;
-    let exerciseFinal = rawLlmProposal.exercisePlan;
-    
-    const containsHeavyKeywords = /crossfit|pesos pesados| sprints|alta intensidad|intensiva|pesas de alta/i.test(rawLlmProposal.exercisePlan);
-    
-    if (rulesResult.restrictions.some(r => r.includes("Prohibida la actividad física de alta intensidad") || r.includes("proteger articulaciones")) && containsHeavyKeywords) {
-        safetyTriggered = true;
-        logEvent("Filtro de Seguridad IA", "CRÍTICO: El borrador del LLM proponía ejercicio de alta intensidad que viola las restricciones médicas del paciente. Reescribiendo plan deportivo de forma segura.");
-        
-        // Rewrite exercise plan to be safe:
-        if (latestExam.values.glucosa > 250) {
-            exerciseFinal = `⚠️ PLAN AJUSTADO POR SEGURIDAD MÉDICA:
-Debido a tus niveles de glucosa críticamente elevados (superiores a 250 mg/dL), se contraindican temporalmente los ejercicios intensivos de fuerza y entrenamientos metabólicos (como CrossFit o pesas pesadas), ya que pueden inducir cetoacidosis.
-Recomendación aprobada: Caminata a paso moderado durante 30 a 45 minutos al día, controlando que la frecuencia cardíaca no supere las 120 pulsaciones por minuto. Una vez que tu glucosa descienda a niveles seguros (<200 mg/dL), se evaluará la incorporación progresiva de fuerza leve.`;
-        } else if (profile.weight / ((profile.height/100)**2) >= 30) {
-            exerciseFinal = `⚠️ PLAN AJUSTADO POR SEGURIDAD ARTICULAR:
-Dado que tu IMC indica obesidad, se ajusta el plan deportivo para proteger tus rodillas y columna. Se eliminan los ejercicios con impacto (saltos, correr rápido).
-Recomendación aprobada: Natación, bicicleta estática o elíptica por 30-40 minutos, de 3 a 4 veces por semana. Combina esto con ejercicios de fuerza de tren superior sentados.`;
-        } else {
-            exerciseFinal = `Recomendación aprobada: Actividad aeróbica moderada como caminata rápida o ciclismo recreativo por 30 minutos al día, 5 veces por semana. Evita esfuerzos máximos hasta valoración médica presencial.`;
+    // 1. ANÁLISIS DE ENFERMEDADES DE BASE
+    if (diseases.includes('diabetes')) {
+        findings.push({
+            category: 'Enfermedad de Base',
+            name: 'Diabetes Mellitus',
+            detail: 'Meta glucemia en ayunas: 70-130 mg/dL. Meta HbA1c: < 7.0%. Se recomienda dieta de bajo índice glucémico y monitoreo de función renal y salud podológica.'
+        });
+        if (examValues.glucosa > 130 || examValues.hba1c > 7.0) {
+            findings.push({
+                category: 'Alerta de Control',
+                name: 'Descontrol Glucémico en Diabetes',
+                detail: `Valores medidos (Glucosa: ${examValues.glucosa || '--'} mg/dL, HbA1c: ${examValues.hba1c || '--'}%) superan la meta terapéutica recomendada.`
+            });
         }
     }
 
+    if (diseases.includes('hipertension')) {
+        findings.push({
+            category: 'Enfermedad de Base',
+            name: 'Hipertensión Arterial',
+            detail: 'Restricción de sodio a < 2,000 mg/día (5g sal). Monitorear presión arterial pre y post-ejercicio antes de cargas pesadas.'
+        });
+    }
+
+    if (diseases.includes('dislipidemia')) {
+        findings.push({
+            category: 'Enfermedad de Base',
+            name: 'Dislipidemia (Colesterol / Triglicéridos)',
+            detail: 'Meta de LDL < 100 mg/dL (o < 70 mg/dL si coexiste con diabetes). Aumentar ingesta de fibra soluble y limitar grasas saturadas.'
+        });
+    }
+
+    if (diseases.includes('renal')) {
+        findings.push({
+            category: 'Enfermedad de Base',
+            name: 'Enfermedad Renal / Disfunción Renal',
+            detail: 'Monitorear niveles de Creatinina y TFG. Ajuste del aporte proteico (0.6-0.8 g/kg/día) e ingesta controlada de potasio y fósforo.'
+        });
+    }
+
+    if (diseases.includes('tiroides')) {
+        findings.push({
+            category: 'Enfermedad de Base',
+            name: 'Patología Tiroidea',
+            detail: 'Monitorear TSH. El hipotiroidismo reduce la tasa metabólica basal, requiriendo estímulo muscular dinámico constante.'
+        });
+    }
+
+    if (diseases.includes('depresion')) {
+        findings.push({
+            category: 'Enfermedad de Base',
+            name: 'Depresión / Ansiedad / Estrés',
+            detail: 'El estrés eleva el cortisol basal y la resistencia insulínica. Se recomiendan actividades físicas al aire libre e higiene del sueño.'
+        });
+    }
+
+    // 2. ANÁLISIS DE MEDICAMENTOS E INTERACCIONES
+    medsList.forEach(med => {
+        if (med.includes('metformin')) {
+            medInteractions.push({
+                medication: 'Metformina',
+                type: 'Fármaco-Nutriente',
+                recommendation: 'El uso prolongado disminuye la absorción de Vitamina B12. Tomar con las comidas principales para reducir malestar gastrointestinal.'
+            });
+        }
+        if (med.includes('enalapril') || med.includes('losartan') || med.includes('captopril') || med.includes('valsartan')) {
+            medInteractions.push({
+                medication: 'IECA / ARA-II (Enalapril / Losartán)',
+                type: 'Fármaco-Electrolitos & Hidratación',
+                recommendation: 'Evitar suplementos de potasio no indicados. Mantener abundante hidratación durante el entrenamiento para evitar hipotensión.'
+            });
+        }
+        if (med.includes('atorvastat') || med.includes('simvastat') || med.includes('rosuvastat')) {
+            medInteractions.push({
+                medication: 'Estatinas (Atorvastatina / Rosuvastatina)',
+                type: 'Fármaco-Ejercicio & Dieta',
+                recommendation: 'Evitar el consumo simultáneo de toronja/pomelo. Si presenta dolores musculares inusuales tras ejercicio de alta intensidad, consultar al médico.'
+            });
+        }
+        if (med.includes('levotiroxin') || med.includes('synthroid') || med.includes('euthyrox')) {
+            medInteractions.push({
+                medication: 'Levotiroxina',
+                type: 'Pauta de Administración',
+                recommendation: 'Administrar en ayunas estricta con agua, 30-60 min antes del desayuno. Espaciar al menos 4 horas de suplementos de Calcio o Hierro.'
+            });
+        }
+        if (med.includes('insulin') || med.includes('glibenclamid') || med.includes('glimepirid')) {
+            medInteractions.push({
+                medication: 'Insulina / Secretagogo de Insulina',
+                type: 'Seguridad en Ejercicio',
+                recommendation: 'Riesgo de hipoglucemia. Portar siempre 15g de carbohidratos de rápida absorción (jugo de fruta o tabletas de glucosa) al entrenar.'
+            });
+            safetyPrecautions.push('Medir glucosa capilar antes de iniciar actividad física (si es < 100 mg/dL, ingerir un snack con carbohidratos).');
+        }
+        if (med.includes('omeprazol') || med.includes('esomeprazol') || med.includes('lansoprazol')) {
+            medInteractions.push({
+                medication: 'Inhibidor de Bomba de Protones (Omeprazol)',
+                type: 'Fármaco-Micronutrientes',
+                recommendation: 'El uso crónico reduce la absorción de Magnesio, Calcio y Vitamina B12.'
+            });
+        }
+        if (med.includes('furosemid') || med.includes('hidroclorotiazid')) {
+            medInteractions.push({
+                medication: 'Diurético (Furosemida / HCTZ)',
+                type: 'Hidratación & Calambres',
+                recommendation: 'Vigilar la reposición de líquidos y electrolitos (Potasio, Magnesio) para prevenir deshidratación y calambres.'
+            });
+        }
+    });
+
+    if (medsList.length > 0 && medInteractions.length === 0) {
+        medInteractions.push({
+            medication: medsRaw,
+            type: 'Verificación General',
+            recommendation: 'Mantener administración según posología prescrita por el médico tratante e hidratación constante.'
+        });
+    }
+
     return {
-        easyExplanation: rawLlmProposal.easyExplanation,
-        technicalExplanation: rawLlmProposal.technicalExplanation,
-        risks: rawLlmProposal.risks,
-        exercisePlan: exerciseFinal,
-        dietPlan: rawLlmProposal.dietPlan,
-        lifestylePlan: rawLlmProposal.lifestylePlan,
-        citations: citations,
-        safetyTriggered: safetyTriggered,
-        specialistName: rulesResult.suggestedSpecialist,
-        specialistDesc: rulesResult.specialistReason
+        findings,
+        medInteractions,
+        safetyPrecautions
     };
 }
+
+function getDailyExerciseScheduleData(profile = {}, examValues = {}) {
+    const isSevereGlucose = examValues.glucosa > 250;
+    const isHighGlucose = examValues.glucosa > 100 || examValues.hba1c >= 5.7;
+    const isHighLipids = examValues.colesterol_total > 200 || examValues.ldl > 130 || examValues.trigliceridos > 150;
+    const isHypothyroid = examValues.tsh > 4.0;
+    const isLowVitD = examValues.vitamina_d < 30;
+
+    if (isSevereGlucose) {
+        return [
+            {
+                day: "LUNES A DOMINGO",
+                type: "Caminata Ligera de Seguridad",
+                duration: "20-30 min",
+                activities: "Caminata a ritmo suave en terreno plano. Evitar cargas anaeróbicas pesadas por riesgo de cetoacidosis.",
+                note: "Glucosa > 250 mg/dL. Reanudar fuerza únicamente tras descenso de glicemia."
+            }
+        ];
+    }
+
+    return [
+        {
+            day: "LUNES",
+            type: "Cardio Zona 2 + Fuerza Tren Inferior",
+            duration: "45 min",
+            activities: "Calentamiento 10 min. Sentadillas (3x12), Puentes de glúteo (3x15), Zancadas estáticas (3x10/pierna). Enfriamiento 10 min.",
+            note: isHighGlucose ? "La activación de grandes grupos musculares de las piernas mejora la captación de glucosa vía GLUT-4." : "Estimula la síntesis de masa muscular magra."
+        },
+        {
+            day: "MARTES",
+            type: "Cardio Aeróbico Continuo",
+            duration: "40 min",
+            activities: "Fase Aeróbica (30 min): Caminata rápida, natación o elíptica en Zona 2. Movilidad articular (10 min).",
+            note: isHighLipids ? "El ejercicio aeróbico sostenido en Zona 2 moviliza los triglicéridos y acelera el aclaramiento de LDL." : "Favorece la salud vascular y endotelial."
+        },
+        {
+            day: "MIÉRCOLES",
+            type: "Fuerza Tren Superior & Zona Core",
+            duration: "45 min",
+            activities: "Calentamiento 10 min. Flexiones modificadas (3x10), Remo con banda o mancuerna (3x12), Plancha frontal (3x30s). Enfriamiento 10 min.",
+            note: "Previene la pérdida de masa magra y fortalece la faja abdominal."
+        },
+        {
+            day: "JUEVES",
+            type: "Caminata al Aire Libre & Exposición Solar",
+            duration: "45-60 min",
+            activities: "Caminata continua en parque o zona verde al aire libre (45 min). Sesión de estiramientos dinámicos (15 min).",
+            note: isLowVitD ? "Exposición solar controlada de brazos y piernas (15-20 min) para estimular la síntesis de Vitamina D3." : "Promueve la reducción del estrés y cortisol."
+        },
+        {
+            day: "VIERNES",
+            type: "Circuito Funcional Metabólico",
+            duration: "40 min",
+            activities: "Calentamiento 10 min. Circuito 3 rondas: Peso muerto ligero (12 reps), Press de hombro (10 reps), Elevación de talones (15 reps), Plancha lateral (20s/lado). Enfriamiento 10 min.",
+            note: isHypothyroid ? "Los circuitos funcionales ayudan a elevar la tasa metabólica basal en presencia de TSH alta." : "Incrementa la resistencia física general."
+        },
+        {
+            day: "SÁBADO",
+            type: "Actividad Recreativa o Deporte Preferido",
+            duration: "60 min",
+            activities: "Paseo en bicicleta, baile, natación recreativa o caminata en naturaleza. Hidratación abundante (2L agua).",
+            note: "Favorece la adherencia a largo plazo mediante el disfrute de la actividad física."
+        },
+        {
+            day: "DOMINGO",
+            type: "Descanso Activo & Flexibilidad / Yoga",
+            duration: "20-30 min",
+            activities: "Sesión de Yoga suave, movilidad articular o estiramientos pasivos de cuerpo entero.",
+            note: "Permite la regeneración muscular y reparación de microfibras."
+        }
+    ];
+}
+
+function getDailyMealScheduleData(profile = {}, examValues = {}) {
+    const isHighGlucose = examValues.glucosa > 100 || examValues.hba1c >= 5.7;
+    const isHighLipids = examValues.colesterol_total > 200 || examValues.ldl > 130 || examValues.trigliceridos > 150;
+    const isHighUricAcid = examValues.acido_urico > 6.5;
+
+    const dietType = profile.diet ? profile.diet.toLowerCase() : 'mediterranea';
+    const isVegan = dietType.includes('vegana');
+    const isVegetarian = dietType.includes('vegetariana') || isVegan;
+
+    const protBreakfast = isVegan ? "Tofu revuelto con cúrcuma y espinacas" : "2 claras + 1 huevo entero con espinacas";
+    const protLunch1 = isVegan ? "Tofu marinado a la plancha (150g)" : (isVegetarian ? "Hamburguesa de lentejas y queso magro" : "Pechuga de pollo a la plancha (150g)");
+    const protDinner1 = isVegan ? "Seitán o tempeh salteado con verduras" : (isVegetarian ? "Omelette de verduras con queso bajo en grasa" : "Filete de pescado blanco al vapor");
+
+    const protLunch2 = isVegan ? "Tazón de quinua con fríjoles negros y aguacate" : (isVegetarian ? "Guisado de lentejas con huevo duro" : "Lomo de pavo a la parrilla (130g)");
+    const protDinner2 = isVegan ? "Crema de calabacín con garbanzos" : (isVegetarian ? "Ensalada completa con tofu" : "Filete de salmón a la plancha");
+
+    return [
+        {
+            day: "LUNES",
+            title: "Día 1: Control Glucémico y Salud Vascular",
+            desayuno: `${protBreakfast}, 1/4 de aguacate y té verde sin azúcar.`,
+            mediaManana: "1 manzana verde pequeña + 8 almendras naturales (magnesio y fibra).",
+            almuerzo: `${protLunch1}, 1/2 taza de quinoa cocida y ensalada mixta con 1 cdta de aceite de oliva EV.`,
+            mediaTarde: "Yogur griego descremado sin azúcar con 1 cdta de chía.",
+            cena: `${protDinner1} con brócoli y zanahorias salteadas al ajo.`,
+            note: isHighGlucose ? "Alimentos de bajo índice glucémico previenen picos de insulina postprandial." : "Equilibrio proteico y lipídico de alta calidad."
+        },
+        {
+            day: "MARTES",
+            title: "Día 2: Rico en Antioxidantes y Grasas Saludables (Omega-3)",
+            desayuno: "Batido verde (espinaca, pepino, 1/2 manzana verde, 1 cda linaza molida) + 2 huevos cocidos o tofu.",
+            mediaManana: "1 rodaja de papaya o melón + 4 nueces de Brasil (selenio tiroideo).",
+            almuerzo: `${protLunch2}, 1/2 taza de arroz integral, ensalada de tomate y espinaca.`,
+            mediaTarde: "Bastones de pepino y zanahoria con 2 cdas de hummus tradicional.",
+            cena: `${protDinner2} sobre cama de espárragos a la plancha.`,
+            note: isHighLipids ? "El Omega-3 de las nueces y la linaza disminuye los triglicéridos y cuida la endotelia." : "Protección antioxidante celular."
+        },
+        {
+            day: "MIÉRCOLES",
+            title: "Día 3: Depuración y Soporte Hepato-Renal",
+            desayuno: "Arepa de avena integral con queso magro (o tofu), tomate en rodajas y té de manzanilla.",
+            mediaManana: "1 pera mediana + puñado de semillas de calabaza.",
+            almuerzo: "Guisado de lentejas con verduras (zanahoria, ahuyama, pimentón), aguacate y ensalada mixta.",
+            mediaTarde: "1 taza de fresas frescas o arándanos ricos en polifenoles.",
+            cena: "Sopa clara de verduras con proteína magra picada (pollo/tofu) y cilantro fresco.",
+            note: isHighUricAcid ? "Estricto control de purinas: sin carnes rojas ni mariscos para favorecer la excreción de ácido úrico." : "Aporte óptimo de fibra dietaria."
+        },
+        {
+            day: "JUEVES",
+            title: "Día 4: Antiinflamatorio y Sensibilidad a la Insulina",
+            desayuno: "Pancakes de avena y clara de huevo con canela + café negro sin azúcar.",
+            mediaManana: "1/2 taza de kéfir o yogur probiótico + 5 nueces picadas.",
+            almuerzo: "Pescado azul (salmón) o Tofu marinado al horno con romero, espárragos y puré de camote pequeño.",
+            mediaTarde: "1 galleta de arroz integral con 1 cda de mantequilla de maní 100% natural.",
+            cena: "Ensalada de espinacas frescas, champiñones salteados, semillas de sésamo y proteína a la plancha.",
+            note: "La canela y los polifenoles modulan la microbiota intestinal y aumentan la sensibilidad insulínica."
+        },
+        {
+            day: "VIERNES",
+            title: "Día 5: Energía Sostenible y Saciedad",
+            desayuno: "Huevos revueltos o tofu salteado con champiñones y tomate + 1 tostada de pan integral masa madre.",
+            mediaManana: "1 durazno o kiwi + 6 avellanas tostadas.",
+            almuerzo: "Pechuga de pavo/pollo o seitán al curry suave con verduras y 1/2 taza de arroz basmati.",
+            mediaTarde: "Té verde o infusión de jengibre + 1/4 taza de edamames al vapor.",
+            cena: "Ceviche vegetal de palmitos y champiñones con cebolla morada, limón y cilantro.",
+            note: "La cebolla y el limón aportan quercetina y vitamina C para optimizar la absorción de hierro."
+        },
+        {
+            day: "SÁBADO",
+            title: "Día 6: Nutrición Celular y Digestión Óptima",
+            desayuno: "Omelette de espinacas, champiñones y 1 cda de queso cottage descremado + té de frutos rojos.",
+            mediaManana: "1 tajada de piña fresca (bromelina digestiva) + semillas de girasol.",
+            almuerzo: "Bowl mediterráneo: quinua, garbanzos tostados, aceitunas negras, pepino, tomate y pollo/tofu a la plancha.",
+            mediaTarde: "Yogur natural con canela en polvo.",
+            cena: "Crema de auyama (calabaza) y jengibre sin crema de leche + 120g de proteína magra a la plancha.",
+            note: "La bromelina de la piña y el jengibre favorecen la digestión proteica y reducen la inflamación."
+        },
+        {
+            day: "DOMINGO",
+            title: "Día 7: Restablecimiento y Preparación Semanal",
+            desayuno: "Tostada integral con aguacate triturado, huevo pochado (o tofu) y semillas de chía.",
+            mediaManana: "1/2 taza de melón picado + 5 almendras.",
+            almuerzo: "Pescado al horno o medallón de lentejas con vegetales asados y 1/3 de plátano cocido.",
+            mediaTarde: "Infusión relajante de toronjil + 1 manzana asada con canela.",
+            cena: "Ensalada ligera de hojas verdes, palmitos, pepino, aceite de oliva virgen extra y proteína magra suave.",
+            note: "Prepara el sistema digestivo para el inicio de la semana con cenas ligeras de rápida asimilación."
+        }
+    ];
+}
+
+// 7. ORQUESTADOR DE IA & MOTOR DINÁMICO DE INFORMES (CON FILTRADO DE SEGURIDAD)
+function orchestrateAiReport(profile, latestExam, rulesResult) {
+    logEvent("Orquestador IA", "Iniciando orquestación dinámica de informe clínico y plan de bienestar.");
+
+    const examValues = (latestExam && latestExam.values) ? latestExam.values : {};
+    
+    // Categorizar marcadores verdaderamente presentes en el examen
+    const normalItems = [];
+    const alteredItems = [];
+    const criticalItems = [];
+
+    for (const [key, val] of Object.entries(examValues)) {
+        if (!CLINICAL_RANGES[key]) continue;
+        const config = CLINICAL_RANGES[key];
+        const normal = config.getNormalRange(profile);
+        const evalResult = config.evaluate(val, profile);
+
+        const itemInfo = {
+            key,
+            name: config.name,
+            value: val,
+            unit: config.unit,
+            rangeStr: `${normal.min} - ${normal.max} ${config.unit}`,
+            status: evalResult.status,
+            state: evalResult.state,
+            note: evalResult.note || ''
+        };
+
+        if (evalResult.state === 'critical') criticalItems.push(itemInfo);
+        else if (evalResult.state === 'altered') alteredItems.push(itemInfo);
+        else normalItems.push(itemInfo);
+    }
+
+    // ------------------------------------------------------------------
+    // MOTOR DE ANÁLISIS DE ANTECEDENTES Y MEDICAMENTOS (ENFERMEDADES DE BASE)
+    // ------------------------------------------------------------------
+    const multiVarAnalysis = analyzeDiseasesAndMeds(profile, examValues);
+
+    // Generación de HTML dinámico para la pestaña "Análisis Integrado de Variables" en pantalla
+    let variableAnalysisHtml = `
+        <div class="multi-var-analysis-container" style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px 16px; border-radius: 8px; font-size: 0.88rem; color: #10B981; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.3rem;">📊</span>
+                <div>
+                    <strong>Análisis Multivariable Integrado Ejecutado:</strong> Evaluando Biomarcadores, Diagnósticos Preexistentes, Fármacos e Interacciones Fisiológicas.
+                </div>
+            </div>
+
+            <!-- BLOQUE 1: BIOMARCADORES DE EXAMEN -->
+            <div class="analysis-card-block" style="background: #1E293B; border: 1px solid #334155; border-radius: 10px; padding: 16px;">
+                <h4 style="margin-top:0; color:#38BDF8; display:flex; align-items:center; gap:8px; font-size:1.05rem;">
+                    🧪 1. Marcadores Cuantitativos del Examen (${normalItems.length + alteredItems.length + criticalItems.length} Analizados)
+                </h4>
+    `;
+
+    if (normalItems.length === 0 && alteredItems.length === 0 && criticalItems.length === 0) {
+        variableAnalysisHtml += `<p style="color:#94A3B8; font-size:0.88rem;">No se detectaron marcadores cuantitativos en este examen.</p>`;
+    } else {
+        variableAnalysisHtml += `<ul style="margin:0; padding-left:20px; font-size:0.88rem; line-height:1.6; color:#CBD5E1;">`;
+        [...criticalItems, ...alteredItems].forEach(item => {
+            const badgeColor = item.state === 'critical' ? '#EF4444' : '#F59E0B';
+            variableAnalysisHtml += `<li style="margin-bottom:6px;"><strong style="color:#FFF;">${item.name}</strong>: ${item.value} ${item.unit} (Ref: ${item.rangeStr}) <span style="background:${badgeColor}; color:#fff; padding:2px 6px; border-radius:4px; font-size:0.75rem;">${item.status}</span>. ${item.note}</li>`;
+        });
+        normalItems.forEach(item => {
+            variableAnalysisHtml += `<li style="margin-bottom:6px;"><strong style="color:#A7F3D0;">${item.name}</strong>: ${item.value} ${item.unit} (Ref: ${item.rangeStr}) <span style="background:#10B981; color:#fff; padding:2px 6px; border-radius:4px; font-size:0.75rem;">Normal</span></li>`;
+        });
+        variableAnalysisHtml += `</ul>`;
+    }
+    variableAnalysisHtml += `</div>`;
+
+    // BLOQUE 2: ENFERMEDADES DE BASE
+    variableAnalysisHtml += `
+        <div class="analysis-card-block" style="background: #1E293B; border: 1px solid #334155; border-radius: 10px; padding: 16px;">
+            <h4 style="margin-top:0; color:#F59E0B; display:flex; align-items:center; gap:8px; font-size:1.05rem;">
+                🏥 2. Análisis de Enfermedades de Base & Diagnósticos Preexistentes
+            </h4>
+    `;
+    if (multiVarAnalysis.findings.length === 0) {
+        variableAnalysisHtml += `<p style="color:#94A3B8; font-size:0.88rem;">No se registraron patologías preexistentes de alto riesgo en el perfil médico del usuario.</p>`;
+    } else {
+        variableAnalysisHtml += `<div style="display:flex; flex-direction:column; gap:10px;">`;
+        multiVarAnalysis.findings.forEach(f => {
+            variableAnalysisHtml += `
+                <div style="background:#0F172A; border-left:3px solid #F59E0B; padding:10px 12px; border-radius:4px; font-size:0.88rem;">
+                    <div style="font-weight:600; color:#FFF;">${f.name} <small style="color:#94A3B8;">(${f.category})</small></div>
+                    <div style="color:#CBD5E1; margin-top:4px;">${f.detail}</div>
+                </div>
+            `;
+        });
+        variableAnalysisHtml += `</div>`;
+    }
+    variableAnalysisHtml += `</div>`;
+
+    // BLOQUE 3: MEDICAMENTOS E INTERACCIONES
+    variableAnalysisHtml += `
+        <div class="analysis-card-block" style="background: #1E293B; border: 1px solid #334155; border-radius: 10px; padding: 16px;">
+            <h4 style="margin-top:0; color:#A7F3D0; display:flex; align-items:center; gap:8px; font-size:1.05rem;">
+                💊 3. Medicamentos Registrados e Interacciones Fármaco-Nutriente
+            </h4>
+    `;
+    if (multiVarAnalysis.medInteractions.length === 0) {
+        variableAnalysisHtml += `<p style="color:#94A3B8; font-size:0.88rem;">No se registraron medicamentos habituales de prescripción activa.</p>`;
+    } else {
+        variableAnalysisHtml += `<div style="display:flex; flex-direction:column; gap:10px;">`;
+        multiVarAnalysis.medInteractions.forEach(m => {
+            variableAnalysisHtml += `
+                <div style="background:#0F172A; border-left:3px solid #10B981; padding:10px 12px; border-radius:4px; font-size:0.88rem;">
+                    <div style="font-weight:600; color:#34D399;">💊 ${m.medication} &nbsp;•&nbsp; <span style="color:#94A3B8; font-size:0.8rem;">${m.type}</span></div>
+                    <div style="color:#CBD5E1; margin-top:4px;">${m.recommendation}</div>
+                </div>
+            `;
+        });
+        variableAnalysisHtml += `</div>`;
+    }
+    variableAnalysisHtml += `</div>`;
+
+    // BLOQUE 4: ACCIÓN DIRECTA PARA EXCEL
+    variableAnalysisHtml += `
+        <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #10B981; border-radius: 10px; padding: 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h4 style="margin:0; color:#FFF; font-size:1rem;">📥 Exportación de Rutina y Plan Alimenticio de 7 Días</h4>
+                <p style="margin:4px 0 0 0; color:#94A3B8; font-size:0.83rem;">Genera el documento Excel (.xlsx) estructurado con el menú diario y cronograma de ejercicios.</p>
+            </div>
+            <button onclick="exportToExcel()" class="btn btn-success" style="background:#10B981; border:none; padding:10px 18px; font-weight:600; border-radius:8px; cursor:pointer; color:#fff; display:flex; align-items:center; gap:8px;">
+                📊 Generar Archivo Excel (.xlsx)
+            </button>
+        </div>
+    </div>
+    `;
+
+    // ------------------------------------------------------------------
+    // 1. DYNAMIC EASY EXPLANATION (Paciente - Lenguaje Claro)
+    // ------------------------------------------------------------------
+    let easyExplanation = "";
+    const totalCount = normalItems.length + alteredItems.length + criticalItems.length;
+
+    if (totalCount === 0) {
+        easyExplanation = "No se registraron biomarcadores cuantitativos válidos en este examen para generar una interpretación automática.";
+    } else {
+        const abnormalCount = alteredItems.length + criticalItems.length;
+        if (abnormalCount === 0) {
+            easyExplanation = `¡Excelente noticia! Todos los ${totalCount} marcadores evaluados en este examen (${normalItems.map(i => i.name).join(', ')}) se encuentran dentro de los rangos normales y saludables. Tu perfil fisiológico muestra gran estabilidad.`;
+        } else {
+            easyExplanation = `Se evaluaron ${totalCount} marcadores en tu reporte. Se identificaron ${abnormalCount} indicador(es) fuera del rango de referencia:\n\n`;
+            
+            const allAbnormal = [...criticalItems, ...alteredItems];
+            allAbnormal.forEach(item => {
+                easyExplanation += `• ${item.name}: Tu valor es de ${item.value} ${item.unit} (Rango de referencia: ${item.rangeStr}). Estatus: ${item.status}. ${item.note}\n`;
+            });
+
+            if (normalItems.length > 0) {
+                easyExplanation += `\nEn rango normal: ${normalItems.map(i => `${i.name} (${i.value} ${i.unit})`).join(', ')}.`;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 2. DYNAMIC TECHNICAL EXPLANATION (Médico - Lenguaje Técnico)
+    // ------------------------------------------------------------------
+    let technicalExplanation = "";
+    if (totalCount > 0) {
+        technicalExplanation = `Panel de biomarcadores séricos (${totalCount} analitos procesados):\n`;
+        technicalExplanation += Object.entries(examValues)
+            .filter(([k]) => CLINICAL_RANGES[k])
+            .map(([k, v]) => `- ${CLINICAL_RANGES[k].name}: ${v} ${CLINICAL_RANGES[k].unit}`)
+            .join('\n') + '\n\n';
+
+        if (criticalItems.length > 0 || alteredItems.length > 0) {
+            technicalExplanation += `Hallazgos clínicos alterados/críticos: `;
+            const abnormalStr = [...criticalItems, ...alteredItems].map(i => `${i.name} (${i.value} ${i.unit} vs ref ${i.rangeStr}) -> ${i.status}`).join('; ');
+            technicalExplanation += abnormalStr + '.';
+        } else {
+            technicalExplanation += `Sin hallazgos patológicos en los biomarcadores procesados. Parámetros dentro de varianza fisiológica esperada.`;
+        }
+    } else {
+        technicalExplanation = "Sin biomarcadores procesados.";
+    }
+
+    // ------------------------------------------------------------------
+    // 3. DYNAMIC RISKS EVALUATION
+    // ------------------------------------------------------------------
+    let risks = "";
+    const riskPoints = [];
+
+    if (examValues.tsh && (examValues.tsh > 4.0 || examValues.tsh < 0.4)) {
+        if (examValues.tsh > 4.0) {
+            riskPoints.push(`• Función Tiroidea (TSH ${examValues.tsh} mIU/L): La TSH elevada es indicativa de hipotiroidismo (subclínico o clínico). Sin control endocrinológico, puede derivar en bradicardia, fatiga crónica, aumento de peso e hipercolesterolemia secundaria.`);
+        } else {
+            riskPoints.push(`• Función Tiroidea (TSH ${examValues.tsh} mIU/L): TSH suprimida compatible con hipertiroidismo. Riesgo de taquicardias, arritmias cardíacas y pérdida de masa ósea.`);
+        }
+    }
+
+    if (examValues.glucosa && examValues.glucosa > 100) {
+        if (examValues.glucosa > 250) {
+            riskPoints.push(`• Salud Metabólica (Glucosa ${examValues.glucosa} mg/dL): Hiperglucemia severa. Riesgo inminente de cetoacidosis diabética o estado hiperosmolar.`);
+        } else {
+            riskPoints.push(`• Salud Metabólica (Glucosa ${examValues.glucosa} mg/dL): Nivel elevado en ayunas. Riesgo de progresión a resistencia a la insulina o diabetes tipo 2.`);
+        }
+    }
+
+    if (examValues.colesterol_total > 200 || examValues.ldl > 100) {
+        riskPoints.push(`• Riesgo Cardiovascular (Lípidos): Niveles elevados de lípidos favorecen la aterogénesis y placas de ateroma en vasos sanguíneos.`);
+    }
+
+    if (examValues.creatinina && examValues.creatinina > (profile.sex === 'F' ? 1.1 : 1.3)) {
+        riskPoints.push(`• Función Renal (Creatinina ${examValues.creatinina} mg/dL): Elevación por encima del rango alto fisiológico. Riesgo de disfunción renal.`);
+    }
+
+    if (examValues.vitamina_d && examValues.vitamina_d < 30) {
+        riskPoints.push(`• Insuficiencia de Vitamina D (${examValues.vitamina_d} ng/mL): Afecta la fijación de calcio óseo y la regulación inmunológica.`);
+    }
+
+    if (examValues.hemoglobina && examValues.hemoglobina < 12) {
+        riskPoints.push(`• Serie Roja / Anemia (Hemoglobina ${examValues.hemoglobina} g/dL): Disminución de transporte de oxígeno, causando fatiga e intolerancia al esfuerzo.`);
+    }
+
+    if (riskPoints.length > 0) {
+        risks = riskPoints.join('\n\n');
+    } else {
+        risks = "No se identifican factores de riesgo fisiológico elevados en los marcadores examinados. Se sugiere mantener controles médicos periódicos y hábitos de vida saludables.";
+    }
+
+    // 4. GENERATE DETAILED 7-DAY PLANS
+    const exercisePlan = generateDailyExerciseSchedule(profile, examValues);
+    const dietPlan = generateDailyMealSchedule(profile, examValues);
+    const lifestylePlan = "Monitorear nivel de energía diaria, asegurar 7 a 8 horas de sueño reparador, hidratación abundante (2.5L de agua al día) y pausas activas cada 2 horas.";
+
+    // 5. CITATIONS & SPECIALIST
+    const citations = [];
+    if (examValues.glucosa > 100 || examValues.hba1c > 5.6) {
+        if (typeof RAG_KNOWLEDGE !== 'undefined' && RAG_KNOWLEDGE.diabetes) RAG_KNOWLEDGE.diabetes.forEach(c => citations.push(c));
+    }
+    if (examValues.colesterol_total > 200 || examValues.ldl > 100) {
+        if (typeof RAG_KNOWLEDGE !== 'undefined' && RAG_KNOWLEDGE.dislipidemia) RAG_KNOWLEDGE.dislipidemia.forEach(c => citations.push(c));
+    }
+    if (typeof RAG_KNOWLEDGE !== 'undefined' && RAG_KNOWLEDGE.general) RAG_KNOWLEDGE.general.forEach(c => citations.push(c));
+
+    let specialistName = (rulesResult && rulesResult.suggestedSpecialist) ? rulesResult.suggestedSpecialist : "Médico General";
+    let specialistDesc = (rulesResult && rulesResult.specialistReason) ? rulesResult.specialistReason : "Tus indicadores se encuentran dentro de rangos habituales de control.";
+
+    if (examValues.tsh && (examValues.tsh > 4.0 || examValues.tsh < 0.4)) {
+        specialistName = "Endocrinólogo";
+        specialistDesc = `Debido a un nivel de TSH alterado (${examValues.tsh} mIU/L), se recomienda consulta con Endocrinología.`;
+    }
+
+    return {
+        easyExplanation,
+        technicalExplanation,
+        risks,
+        exercisePlan,
+        dietPlan,
+        lifestylePlan,
+        citations,
+        safetyTriggered: false,
+        specialistName,
+        specialistDesc,
+        variableAnalysisHtml
+    };
+}
+
+// Generador de Plan de Ejercicio Semanal Detallado Día por Día
+
+function generateDailyExerciseSchedule(profile, examValues) {
+    const location = profile.gym === 'si' ? 'Gimnasio / Centro Deportivo' : 'En Casa / Al Aire Libre';
+    const goalText = profile.goal ? profile.goal.toUpperCase() : 'OPTIMIZACIÓN DE SALUD GENERAL';
+    const days = getDailyExerciseScheduleData(profile, examValues);
+
+    let html = `
+        <div class="daily-plan-wrapper">
+            <div class="plan-header-summary" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:10px; background:#1E293B; border-radius:8px; margin-bottom:12px; font-size:0.85rem;">
+                <span>🎯 <strong>Objetivo:</strong> ${goalText}</span>
+                <span>📍 <strong>Lugar:</strong> ${location}</span>
+                <span>⚡ <strong>Plan:</strong> 7 días estructurados</span>
+            </div>
+    `;
+
+    days.forEach(d => {
+        html += `
+            <div class="day-plan-card" style="background:#0F172A; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:10px;">
+                <div class="day-plan-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span class="day-plan-title" style="font-weight:600; color:#38BDF8;">📆 ${d.day} &nbsp;•&nbsp; ${d.type}</span>
+                    <span class="badge badge-info" style="background:#0284C7; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem;">⏱️ ${d.duration}</span>
+                </div>
+                <div class="day-plan-body" style="font-size:0.85rem; line-height:1.4;">
+                    <div class="exercise-activity-item" style="margin-bottom:6px; color:#CBD5E1;">🔹 ${d.activities}</div>
+                    <div class="day-clinical-note" style="color:#F59E0B; font-size:0.8rem; margin-top:6px;">💡 <em>Impacto Clínico / Precaución:</em> ${d.note}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    return html;
+}
+
+function generateDailyMealSchedule(profile, examValues) {
+    const dietType = profile.diet ? profile.diet.toLowerCase() : 'mediterranea';
+    const days = getDailyMealScheduleData(profile, examValues);
+
+    let html = `
+        <div class="daily-plan-wrapper">
+            <div class="plan-header-summary" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:10px; background:#1E293B; border-radius:8px; margin-bottom:12px; font-size:0.85rem;">
+                <span>🥗 <strong>Patrón:</strong> ${dietType.toUpperCase()}</span>
+                <span>💧 <strong>Hidratación:</strong> 2.5 L/día</span>
+                <span>📋 <strong>Pauta:</strong> 5 comidas equilibradas</span>
+            </div>
+    `;
+
+    days.forEach(d => {
+        html += `
+            <div class="day-plan-card" style="background:#0F172A; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:10px;">
+                <div class="day-plan-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span class="day-plan-title" style="font-weight:600; color:#34D399;">📆 ${d.day} &nbsp;•&nbsp; ${d.title}</span>
+                    <span class="badge badge-success" style="background:#059669; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem;">Nutrición</span>
+                </div>
+                <div class="day-plan-body" style="font-size:0.85rem; line-height:1.4; color:#CBD5E1;">
+                    <div style="margin-bottom:3px;"><strong style="color:#A7F3D0;">🌅 Desayuno:</strong> ${d.desayuno}</div>
+                    <div style="margin-bottom:3px;"><strong style="color:#A7F3D0;">🍏 Media Mañana:</strong> ${d.mediaManana}</div>
+                    <div style="margin-bottom:3px;"><strong style="color:#A7F3D0;">🥗 Almuerzo:</strong> ${d.almuerzo}</div>
+                    <div style="margin-bottom:3px;"><strong style="color:#A7F3D0;">☕ Media Tarde:</strong> ${d.mediaTarde}</div>
+                    <div style="margin-bottom:3px;"><strong style="color:#A7F3D0;">🌙 Cena:</strong> ${d.cena}</div>
+                    <div class="day-clinical-note" style="color:#F59E0B; font-size:0.8rem; margin-top:6px;">🌿 <em>Tip Nutricional:</em> ${d.note}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    return html;
+}
+
 
 // Helper to load user-specific profile and exams from localStorage
 function loadUserData() {
@@ -629,32 +1271,121 @@ function loadUserData() {
         state.profile = JSON.parse(savedProfile);
     } else {
         // Reset to defaults if it's a new user
-        state.profile = {
-            age: 42,
-            sex: "M",
-            weight: 78,
-            height: 175,
-            pregnancy: "N",
-            activity: "moderado",
-            diseases: [],
-            meds: "",
-            injuries: "",
-            goal: "perder_peso",
-            diet: "ninguna",
-            gym: "mancuernas",
-            budget: "moderado"
-        };
+        state.profile = JSON.parse(JSON.stringify(EMPTY_PROFILE));
     }
     
     // Load exams specific to user
     const savedExams = localStorage.getItem(`health_exams_${email}`);
     if (savedExams) {
-        state.exams = JSON.parse(savedExams);
+        let loaded = JSON.parse(savedExams);
+        state.exams = sanitizeStoredExams(loaded);
         // Force chronological sorting by date
         state.exams.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // Save cleaned version back
+        saveExams();
     } else {
         state.exams = [];
     }
+    
+    syncProfileFormFromState();
+}
+
+function sanitizeStoredExams(exams) {
+    if (!Array.isArray(exams)) return [];
+    return exams.map(exam => {
+        if (exam && exam.values) {
+            // Check for legacy fake defaults signature
+            const isLegacyColesterol = exam.values.colesterol_total === 180 && exam.values.ldl === 95 && exam.values.hdl === 50 && exam.values.trigliceridos === 120;
+            const isLegacyVitD = exam.values.vitamina_d === 35;
+
+            if (isLegacyColesterol) {
+                delete exam.values.colesterol_total;
+                delete exam.values.ldl;
+                delete exam.values.hdl;
+                delete exam.values.trigliceridos;
+                if (exam.values.hba1c === 5.4) delete exam.values.hba1c;
+                if (exam.values.creatinina === 0.8) delete exam.values.creatinina;
+                if (exam.values.hemoglobina === 14) delete exam.values.hemoglobina;
+                if (exam.values.ferritina === 80) delete exam.values.ferritina;
+            }
+
+            if (isLegacyVitD && isLegacyColesterol) {
+                delete exam.values.vitamina_d;
+            }
+
+            // Re-run rules & AI report only if missing or if legacy defaults were removed
+            if (!exam.rulesResult || isLegacyColesterol) {
+                exam.rulesResult = runClinicalRulesEngine(exam.values, state.profile);
+            }
+            if (!exam.aiReport || isLegacyColesterol) {
+                exam.aiReport = orchestrateAiReport(state.profile, exam, exam.rulesResult);
+            }
+        }
+        return exam;
+    });
+}
+
+function syncProfileFormFromState() {
+    const prof = state.profile || EMPTY_PROFILE;
+    if (document.getElementById('prof-age')) document.getElementById('prof-age').value = prof.age || '';
+    if (document.getElementById('prof-sex')) document.getElementById('prof-sex').value = prof.sex || '';
+    if (document.getElementById('prof-weight')) document.getElementById('prof-weight').value = prof.weight || '';
+    if (document.getElementById('prof-height')) document.getElementById('prof-height').value = prof.height || '';
+    if (document.getElementById('prof-pregnancy')) document.getElementById('prof-pregnancy').value = prof.pregnancy || 'N';
+    if (document.getElementById('prof-activity')) document.getElementById('prof-activity').value = prof.activity || '';
+    if (document.getElementById('prof-meds')) document.getElementById('prof-meds').value = prof.meds || '';
+    if (document.getElementById('prof-injuries')) document.getElementById('prof-injuries').value = prof.injuries || '';
+    if (document.getElementById('prof-goal')) document.getElementById('prof-goal').value = prof.goal || '';
+    if (document.getElementById('prof-diet')) document.getElementById('prof-diet').value = prof.diet || '';
+    if (document.getElementById('prof-gym')) document.getElementById('prof-gym').value = prof.gym || '';
+    if (document.getElementById('prof-budget')) document.getElementById('prof-budget').value = prof.budget || '';
+
+    const diseaseChecks = document.querySelectorAll('input[name="disease"]');
+    diseaseChecks.forEach(cb => {
+        cb.checked = Array.isArray(prof.diseases) && prof.diseases.includes(cb.value);
+    });
+}
+
+function getActiveExam() {
+    if (!state.exams || state.exams.length === 0) return null;
+    if (state.activeExamId) {
+        const found = state.exams.find(e => e.id === state.activeExamId);
+        if (found) return found;
+    }
+    return state.exams[state.exams.length - 1];
+}
+
+function populateExamSelector() {
+    const selectorIds = ['active-exam-select-dashboard', 'active-exam-select-interpretation'];
+    const active = getActiveExam();
+
+    selectorIds.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.innerHTML = '';
+
+        if (state.exams.length === 0) {
+            select.innerHTML = `<option value="">Sin exámenes registrados</option>`;
+            return;
+        }
+
+        state.exams.forEach((exam, idx) => {
+            const opt = document.createElement('option');
+            opt.value = exam.id;
+            const dateStr = exam.date || `Examen #${idx + 1}`;
+            const metricsCount = exam.values ? Object.keys(exam.values).length : 0;
+            opt.innerText = `📅 ${dateStr} (${metricsCount} biomarcadores) - ${exam.name || 'Examen'}`;
+            if (active && active.id === exam.id) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+
+        select.onchange = (e) => {
+            state.activeExamId = e.target.value;
+            updateUI();
+        };
+    });
 }
 
 // 8. DATA PERSISTENCE & INITIALIZATION
@@ -817,11 +1548,8 @@ document.getElementById('register-form').addEventListener('submit', (e) => {
     document.getElementById('user-display-email').innerText = email;
     document.getElementById('user-avatar-char').innerText = email.charAt(0).toUpperCase();
     
-    // Fill profile values and show toast
-    document.getElementById('prof-age').value = state.profile.age;
-    document.getElementById('prof-sex').value = state.profile.sex;
-    document.getElementById('prof-weight').value = state.profile.weight;
-    document.getElementById('prof-height').value = state.profile.height;
+    // Sync profile values (will be empty for new users) and show toast
+    syncProfileFormFromState();
     
     showToast("Cuenta Creada", `Bienvenido a HealthAnalytics, ${email}!`, "success");
     
@@ -876,21 +1604,7 @@ document.getElementById('btn-logout').addEventListener('click', (e) => {
     // Reiniciar memoria del estado global
     state.currentUser = null;
     state.exams = [];
-    state.profile = {
-        age: 42,
-        sex: "M",
-        weight: 78,
-        height: 175,
-        pregnancy: "N",
-        activity: "moderado",
-        diseases: [],
-        meds: "",
-        injuries: "",
-        goal: "perder_peso",
-        diet: "ninguna",
-        gym: "mancuernas",
-        budget: "moderado"
-    };
+    state.profile = JSON.parse(JSON.stringify(EMPTY_PROFILE));
     state.activeRole = 'patient';
     
     // Limpiar campos de formularios e inputs del DOM
@@ -1000,21 +1714,7 @@ document.getElementById('btn-reset-db').addEventListener('click', () => {
         // Reiniciar variables en memoria del estado global
         state.currentUser = null;
         state.exams = [];
-        state.profile = {
-            age: 42,
-            sex: "M",
-            weight: 78,
-            height: 175,
-            pregnancy: "N",
-            activity: "moderado",
-            diseases: [],
-            meds: "",
-            injuries: "",
-            goal: "perder_peso",
-            diet: "ninguna",
-            gym: "mancuernas",
-            budget: "moderado"
-        };
+        state.profile = JSON.parse(JSON.stringify(EMPTY_PROFILE));
         state.activeRole = 'patient';
         state.pendingValidations = [];
         state.auditLogs = [];
@@ -1164,60 +1864,47 @@ async function extractTextFromPdf(arrayBuffer) {
     return fullText;
 }
 
-// Parses text using regex to find ColSanitas specific variables
 function parseClinicalText(text) {
-    // Normal defaults matching a standard healthy status, but we will overwrite whatever we find
-    const defaultValues = {
-        glucosa: 85,
-        hba1c: 5.4,
-        colesterol_total: 180,
-        ldl: 95,
-        hdl: 50,
-        trigliceridos: 120,
-        creatinina: 0.8,
-        tsh: 1.8,
-        vitamina_d: 35,
-        hemoglobina: 14.0,
-        ferritina: 80,
-        peso: state.profile.weight || 75
-    };
-    
-    // Normalize spaces for simpler matching
     const normalized = text.replace(/\s+/g, ' ');
     console.log("PDF Text Extracted (Normalized):", normalized);
     
-    const values = { ...defaultValues };
+    // START WITH EMPTY OBJECT - NEVER INVENT DEFAULT VALUES
+    const values = {};
     
-    // Exact ColSanitas matching regex rules
-    const matches = {
-        glucosa: /GLICEMIA\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        hba1c: /HEMOGLOBINA GLICOSILADA\s*(?:\*|)\s*(\d+(?:\.\d+)?)/i.exec(normalized),
-        colesterol_total: /COLESTEROL TOTAL\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        ldl: /COLESTEROL LDL\s*-\s*CALCULADO\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        hdl: /COLESTEROL HDL\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        trigliceridos: /TRIGLICERIDOS\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        creatinina: /CREATININA EN SUERO\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        hemoglobina: /HEMOGLOBINA\s+(\d+(?:\.\d+)?)\s*g\/dl/i.exec(normalized),
-        ferritina: /FERRITINA\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        tsh: /TSH\s+(\d+(?:\.\d+)?)/i.exec(normalized),
-        vitamina_d: /VITAMINA D\s+(\d+(?:\.\d+)?)/i.exec(normalized)
-    };
-    
-    let foundAny = false;
-    for (const [key, match] of Object.entries(matches)) {
+    const patterns = [
+        { key: 'glucosa', regex: /(?:GLICEMIA|GLUCOSA)(?:\s+(?:PRE|BASAL|EN AYUNAS|SERICA))?(?!\s*2\s*HORAS)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'hba1c', regex: /(?:HEMOGLOBINA\s+GLICOSILADA|HEMOGLOBINA\s+GLICADA|HBA1C)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'colesterol_total', regex: /COLESTEROL\s+TOTAL[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'ldl', regex: /(?:COLESTEROL\s+LDL(?:[\s\-]*CALCULADO)?|LDL\s+COLESTEROL)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'hdl', regex: /(?:COLESTEROL\s+HDL|HDL\s+COLESTEROL)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'trigliceridos', regex: /TRIGLIC[EÉ]RIDOS[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'creatinina', regex: /CREATININA(?:\s+(?:EN SUERO|SERICA))?[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'tsh', regex: /(?:HORMONA\s+ESTIMULANTE\s+DE[L]?\s+TIROIDES(?:\s+ULTRASENSIBLE)?|TSH(?:\s+ULTRASENSIBLE)?)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'vitamina_d', regex: /(?:VITAMINA\s+D(?:3|2)?|25[\-\s]*OH[\-\s]*VITAMINA\s+D)(?:[\s\-\_]*25[\s\-\_]*(?:HIDROXI|OH))?[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'vitamina_b12', regex: /(?:VITAMINA\s+B12|VITAMINA\s+B\-12)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'acido_urico', regex: /(?:ACIDO\s+URICO|[ÁA]CIDO\s+[ÚU]RICO)(?:\s+(?:EN SUERO|SERICO))?[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'hemoglobina', regex: /HEMOGLOBINA(?!\s+GLIC)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'ferritina', regex: /FERRITINA(?:\s+(?:EN SUERO|SERICA))?[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'potasio', regex: /POTASIO(?:\s+(?:EN SUERO|SERICO))?[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'sodio', regex: /SODIO(?:\s+(?:EN SUERO|SERICO))?[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'alt_tgp', regex: /(?:ALANINO\s+AMINO\s+TRANSFERASA(?:\s*\([^)]*\))?|ALAT|TGP|ALT)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'ast_tgo', regex: /(?:ASPARTATO\s+AMINO\s+TRANSFERASA(?:\s*\([^)]*\))?|ASAT|TGO|AST)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'ggt', regex: /(?:GAMA\s+GLUTAMIL\s+TRANSFERASA|GAMMA\s+GLUTAMIL\s+TRANSFERASA|GGT)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'insulina', regex: /INSULINA(?:\s+BASAL)?[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 'psa', regex: /(?:ANTIGENO\s+PROSTATICO(?:\s+ESPECIFICO)?|PSA)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i },
+        { key: 't4_libre', regex: /(?:T[\s\-]*4\s+LIBRE|TIROXINA\s+LIBRE)[^\d]{0,40}?(\d+(?:[\.,]\d+)?)/i }
+    ];
+
+    for (const item of patterns) {
+        const match = item.regex.exec(normalized);
         if (match && match[1]) {
-            values[key] = parseFloat(match[1]);
-            foundAny = true;
-            console.log(`Parsed biomarker ${key}: ${values[key]}`);
+            const rawVal = match[1].replace(',', '.');
+            const num = parseFloat(rawVal);
+            if (!isNaN(num)) {
+                values[item.key] = num;
+                console.log(`Parsed biomarker ${item.key}: ${num}`);
+            }
         }
-    }
-    
-    // If we could not extract any specific clinical marker, we fall back to a random preset
-    if (!foundAny) {
-        console.warn("No se detectaron marcadores clínicos conocidos. Usando plantilla aleatoria.");
-        const keys = Object.keys(EXAM_PRESETS);
-        const randomPreset = EXAM_PRESETS[keys[Math.floor(Math.random() * keys.length)]];
-        return { ...randomPreset.values };
     }
     
     return values;
@@ -1286,13 +1973,12 @@ function handleExamFile(file) {
                 parsedValues = parseClinicalText(pdfText);
                 examDate = parseExamDateFromPdf(pdfText);
                 
-                logEvent("Extracción Completada", `PDF parseado con éxito. Colesterol: ${parsedValues.colesterol_total || 'N/A'}, HbA1c: ${parsedValues.hba1c || 'N/A'}`);
+                const detectedCount = Object.keys(parsedValues).length;
+                logEvent("Extracción Completada", `PDF parseado con éxito. Marcadores extraídos: ${detectedCount}`);
             } else {
-                // If it's an image, fall back to a random preset
-                logEvent("Carga de Imagen (Simulada)", `Archivo de imagen cargado: ${file.name}. Usando plantilla simulada.`);
-                const keys = Object.keys(EXAM_PRESETS);
-                const randomPreset = EXAM_PRESETS[keys[Math.floor(Math.random() * keys.length)]];
-                parsedValues = { ...randomPreset.values };
+                // Image file uploaded
+                logEvent("Carga de Imagen", `Archivo de imagen cargado: ${file.name}.`);
+                parsedValues = {};
             }
             
             progressFill.style.width = '100%';
@@ -1375,33 +2061,119 @@ function showOcrVerificationTable(examTemplate) {
     const tbody = document.getElementById('ocr-edit-tbody');
     tbody.innerHTML = '';
     
-    for (const [key, val] of Object.entries(examTemplate.values)) {
-        if (!CLINICAL_RANGES[key]) continue;
-        
-        const config = CLINICAL_RANGES[key];
-        const normal = config.getNormalRange(state.profile);
-        const evalResult = config.evaluate(val, state.profile);
-        
-        let badgeClass = "badge-success";
-        if (evalResult.state === 'altered') badgeClass = "badge-warning";
-        if (evalResult.state === 'critical') badgeClass = "badge-danger";
-        
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><strong>${config.name}</strong></td>
-            <td>
-                <input type="number" step="0.01" class="editable-value-input" data-key="${key}" value="${formatClinicalValue(val, key)}">
+    const entries = Object.entries(examTemplate.values || {}).filter(([k, v]) => CLINICAL_RANGES[k]);
+    
+    if (entries.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.id = "ocr-empty-notice";
+        emptyRow.innerHTML = `
+            <td colspan="5" class="text-center text-muted" style="padding: 20px;">
+                ℹ️ No se detectaron biomarcadores automáticos en este archivo.<br>
+                <small>Puedes agregar tus indicadores manualmente usando el botón <strong>"+ Agregar Indicador Manual"</strong> de abajo.</small>
             </td>
-            <td>${config.unit}</td>
-            <td>${normal.min} - ${normal.max}</td>
-            <td><span class="badge ${badgeClass}">${evalResult.status}</span></td>
         `;
-        tbody.appendChild(row);
+        tbody.appendChild(emptyRow);
+    } else {
+        for (const [key, val] of entries) {
+            appendRowToOcrTable(key, val);
+        }
     }
     
     // Scroll to verification
     resultCard.scrollIntoView({ behavior: 'smooth' });
 }
+
+function appendRowToOcrTable(key, val = "") {
+    const tbody = document.getElementById('ocr-edit-tbody');
+    
+    // Remove empty notice if present
+    const notice = document.getElementById('ocr-empty-notice');
+    if (notice) notice.remove();
+
+    // Prevent duplicate row for same key
+    if (tbody.querySelector(`input[data-key="${key}"]`)) return;
+    
+    const config = CLINICAL_RANGES[key];
+    if (!config) return;
+    
+    const normal = config.getNormalRange(state.profile);
+    const evalResult = (val !== "" && !isNaN(val)) ? config.evaluate(val, state.profile) : { status: "Por ingresar", state: "normal" };
+    
+    let badgeClass = "badge-success";
+    if (evalResult.state === 'altered') badgeClass = "badge-warning";
+    if (evalResult.state === 'critical') badgeClass = "badge-danger";
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>
+            <strong>${config.name}</strong>
+            <button type="button" class="btn-remove-row" style="background:none;border:none;color:#ef4444;cursor:pointer;margin-left:8px;" title="Quitar este indicador">✕</button>
+        </td>
+        <td>
+            <input type="number" step="0.01" class="editable-value-input" data-key="${key}" value="${val !== "" ? formatClinicalValue(val, key) : ''}" placeholder="Ej. ${normal.min}">
+        </td>
+        <td>${config.unit}</td>
+        <td>${normal.min} - ${normal.max}</td>
+        <td><span class="badge ${badgeClass} status-badge">${evalResult.status}</span></td>
+    `;
+    
+    // Attach listener to update badge dynamically when user edits input
+    const input = row.querySelector('.editable-value-input');
+    const badge = row.querySelector('.status-badge');
+    input.addEventListener('input', () => {
+        const num = parseFloat(input.value);
+        if (!isNaN(num)) {
+            const ev = config.evaluate(num, state.profile);
+            badge.innerText = ev.status;
+            badge.className = `badge ${ev.state === 'critical' ? 'badge-danger' : ev.state === 'altered' ? 'badge-warning' : 'badge-success'} status-badge`;
+        } else {
+            badge.innerText = "Por ingresar";
+            badge.className = "badge status-badge";
+        }
+    });
+
+    // Remove row listener
+    row.querySelector('.btn-remove-row').addEventListener('click', () => {
+        row.remove();
+        if (tbody.querySelectorAll('tr').length === 0) {
+            showOcrVerificationTable({ date: document.getElementById('exam-date').value, values: {} });
+        }
+    });
+    
+    tbody.appendChild(row);
+}
+
+// Add manual biomarker listener
+document.getElementById('btn-add-biomarker').addEventListener('click', () => {
+    const keys = Object.keys(CLINICAL_RANGES);
+    const existingKeys = Array.from(document.querySelectorAll('.editable-value-input')).map(i => i.getAttribute('data-key'));
+    const availableKeys = keys.filter(k => !existingKeys.includes(k));
+    
+    if (availableKeys.length === 0) {
+        showToast("Límite Alcanzado", "Todos los indicadores disponibles ya han sido agregados.", "info");
+        return;
+    }
+    
+    const listText = availableKeys.map((k, idx) => `${idx + 1}. ${CLINICAL_RANGES[k].name} (${k})`).join('\n');
+    const inputChoice = prompt(`Escribe el nombre o código del indicador a agregar:\n\n${listText}`, availableKeys[0]);
+    
+    if (inputChoice) {
+        const chosenClean = inputChoice.trim().toLowerCase();
+        let matchedKey = availableKeys.find(k => k.toLowerCase() === chosenClean || CLINICAL_RANGES[k].name.toLowerCase().includes(chosenClean));
+        
+        if (!matchedKey && !isNaN(parseInt(chosenClean))) {
+            const idx = parseInt(chosenClean) - 1;
+            if (availableKeys[idx]) matchedKey = availableKeys[idx];
+        }
+        
+        if (matchedKey && CLINICAL_RANGES[matchedKey]) {
+            appendRowToOcrTable(matchedKey, "");
+            showToast("Indicador Agregado", `Se agregó ${CLINICAL_RANGES[matchedKey].name}. Ingresa su valor.`, "success");
+        } else {
+            showToast("No encontrado", "No se encontró el indicador seleccionado.", "warning");
+        }
+    }
+});
 
 // Cancel OCR
 document.getElementById('btn-cancel-ocr').addEventListener('click', () => {
@@ -1455,6 +2227,7 @@ document.getElementById('btn-save-exam').addEventListener('click', () => {
     
     // Add to patient history
     state.exams.push(newExam);
+    state.activeExamId = newExam.id;
     
     // Sort history chronologically by date ascending
     state.exams.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -1484,10 +2257,10 @@ let radarChart = null;
 let projectionChart = null;
 
 function renderCharts() {
-    renderEvolutionChart();
-    renderRadarChart();
-    renderProjectionChart();
-    updateHealthGauge();
+    try { renderEvolutionChart(); } catch (e) { console.error("Error rendering evolution chart:", e); }
+    try { renderRadarChart(); } catch (e) { console.error("Error rendering radar chart:", e); }
+    try { renderProjectionChart(); } catch (e) { console.error("Error rendering projection chart:", e); }
+    try { updateHealthGauge(); } catch (e) { console.error("Error updating health gauge:", e); }
 }
 
 // Health Score Gauge update
@@ -1503,7 +2276,8 @@ function updateHealthGauge() {
         return;
     }
     
-    const latest = state.exams[state.exams.length - 1];
+    const latest = getActiveExam();
+    if (!latest) return;
     const score = latest.rulesResult.healthScore;
     
     scoreVal.innerText = score;
@@ -1705,7 +2479,8 @@ function renderRadarChart() {
         return;
     }
     
-    const latest = state.exams[state.exams.length - 1];
+    const latest = getActiveExam();
+    if (!latest) return;
     const vals = latest.values;
     
     // Calculate category scores (100 is best)
@@ -1781,6 +2556,37 @@ function renderRadarChart() {
 }
 
 // Trend projection based on adherence
+function populateProjectionIndicators() {
+    const select = document.getElementById('pred-indicator');
+    if (!select) return;
+
+    const latest = getActiveExam();
+    if (!latest || !latest.values) return;
+
+    const currentSelected = select.value;
+    select.innerHTML = '';
+
+    const keys = Object.keys(latest.values);
+    if (keys.length === 0) {
+        select.innerHTML = '<option value="">Sin datos en examen activo</option>';
+        return;
+    }
+
+    keys.forEach(key => {
+        if (!CLINICAL_RANGES[key]) return;
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.innerText = CLINICAL_RANGES[key].name;
+        if (key === currentSelected) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    if (!select.value && select.options.length > 0) {
+        select.options[0].selected = true;
+    }
+}
+
+// Trend projection based on adherence
 function renderProjectionChart() {
     const ctx = document.getElementById('projectionChart');
     if (!ctx) return;
@@ -1789,10 +2595,23 @@ function renderProjectionChart() {
     
     if (state.exams.length === 0) return;
     
-    const indicator = document.getElementById('pred-indicator').value;
-    const latestVal = state.exams[state.exams.length - 1].values[indicator];
+    const latest = getActiveExam();
+    if (!latest || !latest.values) return;
+
+    populateProjectionIndicators();
+
+    const indicatorSelect = document.getElementById('pred-indicator');
+    let indicator = indicatorSelect ? indicatorSelect.value : null;
+
+    if (!indicator || latest.values[indicator] === undefined) {
+        const availableKeys = Object.keys(latest.values);
+        if (availableKeys.length > 0) {
+            indicator = availableKeys[0];
+        }
+    }
     
-    if (latestVal === undefined) return;
+    if (!indicator || latest.values[indicator] === undefined) return;
+    const latestVal = latest.values[indicator];
     
     // Simulate a 6-month projection with a decrease (or increase, e.g. for HDL or vitamin D)
     const labels = ["Hoy", "Mes 1", "Mes 2", "Mes 3", "Mes 4", "Mes 5", "Mes 6"];
@@ -1804,6 +2623,7 @@ function renderProjectionChart() {
     let delta = -0.05; // 5% reduction per month
     if (indicator === 'glucosa' && latestVal > 200) delta = -0.08;
     if (indicator === 'colesterol_total' && latestVal > 220) delta = -0.04;
+    if (indicator === 'hdl' || indicator === 'vitamina_d') delta = 0.04; // Positive increase
     
     for (let i = 1; i <= 6; i++) {
         const factor = 1 + (delta * i / 6);
@@ -1866,7 +2686,61 @@ function renderProjectionChart() {
     });
 }
 
-document.getElementById('pred-indicator').addEventListener('change', renderProjectionChart);
+// Bind listener safely
+const predSelectEl = document.getElementById('pred-indicator');
+if (predSelectEl) {
+    predSelectEl.addEventListener('change', renderProjectionChart);
+}
+
+// Dynamic engine for Next Clinical Controls
+function renderNextControls() {
+    const infoContainer = document.getElementById('next-checkup-date-info');
+    const chkFirst = document.getElementById('chk-first-exam');
+    const chkDoc = document.getElementById('chk-doctor-validation');
+    const chkNext = document.getElementById('chk-next-checkup');
+
+    if (state.exams.length === 0) {
+        if (chkFirst) chkFirst.checked = false;
+        if (chkDoc) chkDoc.checked = false;
+        if (chkNext) chkNext.checked = false;
+        if (infoContainer) infoContainer.innerText = "Carga tu primer examen clínico para calcular la fecha del próximo control.";
+        return;
+    }
+
+    if (chkFirst) chkFirst.checked = true;
+    const latest = getActiveExam();
+    if (!latest) return;
+
+    if (chkDoc) chkDoc.checked = latest.validationStatus === 'approved';
+
+    let monthsToNext = 12;
+    let reason = "Control preventivo anual de rutina";
+
+    if (latest.rulesResult) {
+        const hasCritical = latest.rulesResult.alerts && latest.rulesResult.alerts.some(a => a.type === 'critical');
+        const hasAltered = latest.rulesResult.alerts && latest.rulesResult.alerts.length > 0;
+
+        if (hasCritical) {
+            monthsToNext = 3;
+            reason = "Seguimiento prioritario por biomarcadores críticos (3 meses)";
+        } else if (hasAltered) {
+            monthsToNext = 6;
+            reason = "Seguimiento médico por parámetros fuera de rango (6 meses)";
+        }
+    }
+
+    const examDate = latest.date ? new Date(latest.date) : new Date();
+    const nextDate = new Date(examDate);
+    nextDate.setMonth(nextDate.getMonth() + monthsToNext);
+
+    const dateFormatted = nextDate.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    if (infoContainer) {
+        infoContainer.innerHTML = `📅 <strong>Próximo Examen Sugerido:</strong> ${dateFormatted}<br><span style="color:#06B6D4; font-size:0.85rem; font-weight:500;">(${reason})</span>`;
+    }
+
+    if (chkNext) chkNext.checked = false;
+}
 
 // 12. HISTORICAL COMPARISONS TABLE (RF-42 & RF-43)
 function renderComparisonTable() {
@@ -1879,47 +2753,68 @@ function renderComparisonTable() {
         return;
     }
     
-    const current = state.exams[state.exams.length - 1];
-    const previous = state.exams[state.exams.length - 2];
+    const sortedExams = [...state.exams].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const current = sortedExams[sortedExams.length - 1];
+    const previous = sortedExams[sortedExams.length - 2];
     
     dateLabel.innerText = `Examen del ${previous.date} vs Examen del ${current.date}`;
     tbody.innerHTML = '';
     
-    for (const [key, config] of Object.entries(CLINICAL_RANGES)) {
-        const valPrev = previous.values[key];
-        const valCurr = current.values[key];
+    const allKeys = new Set([
+        ...Object.keys(previous.values || {}),
+        ...Object.keys(current.values || {})
+    ]);
+    
+    for (const key of allKeys) {
+        if (!CLINICAL_RANGES[key]) continue;
+        const config = CLINICAL_RANGES[key];
         
-        if (valPrev === undefined || valCurr === undefined) continue;
+        const valPrev = previous.values ? previous.values[key] : undefined;
+        const valCurr = current.values ? current.values[key] : undefined;
         
-        const diffAbs = Math.round((valCurr - valPrev) * 100) / 100;
-        const diffPct = Math.round((diffAbs / valPrev) * 1000) / 10;
+        const prevStr = valPrev !== undefined ? `${formatClinicalValue(valPrev, key)} ${config.unit}` : '--';
+        const currStr = valCurr !== undefined ? `${formatClinicalValue(valCurr, key)} ${config.unit}` : '--';
         
-        let stateText = "Estable";
+        let diffAbsStr = '--';
+        let diffPctStr = '--';
+        let stateText = "Sin comparar";
         let badgeClass = "variation-neutral";
         
-        // Define if change is good or bad clinical trend (RF-43)
-        let isDecreaseGood = true; // For glucose, ldl, weight, decrease is positive.
-        if (key === 'hdl' || key === 'vitamina_d' || key === 'hemoglobina' || key === 'ferritina') {
-            isDecreaseGood = false; // For these, increase is positive.
-        }
-        
-        if (Math.abs(diffPct) > 2.0) { // changes > 2% matter
-            if (diffPct > 0) {
-                stateText = isDecreaseGood ? "Empeoró" : "Mejoró";
-                badgeClass = isDecreaseGood ? "variation-up" : "variation-down"; // if decrease is good, then increase is red (variation-up)
-            } else {
-                stateText = isDecreaseGood ? "Mejoró" : "Empeoró";
-                badgeClass = isDecreaseGood ? "variation-down" : "variation-up"; // decrease is good = green (variation-down)
+        if (valPrev !== undefined && valCurr !== undefined) {
+            const diffAbs = Math.round((valCurr - valPrev) * 100) / 100;
+            const diffPct = Math.round((diffAbs / valPrev) * 1000) / 10;
+            
+            diffAbsStr = `${diffAbs > 0 ? '+' : ''}${formatClinicalValue(diffAbs, key)} ${config.unit}`;
+            diffPctStr = `${diffPct > 0 ? '+' : ''}${diffPct.toFixed(1)}%`;
+            
+            let isDecreaseGood = true;
+            if (key === 'hdl' || key === 'vitamina_d' || key === 'hemoglobina' || key === 'ferritina' || key === 'vitamina_b12') {
+                isDecreaseGood = false;
             }
+            
+            if (Math.abs(diffPct) > 2.0) {
+                if (diffPct > 0) {
+                    stateText = isDecreaseGood ? "Empeoró" : "Mejoró";
+                    badgeClass = isDecreaseGood ? "variation-up" : "variation-down";
+                } else {
+                    stateText = isDecreaseGood ? "Mejoró" : "Empeoró";
+                    badgeClass = isDecreaseGood ? "variation-down" : "variation-up";
+                }
+            } else {
+                stateText = "Estable";
+            }
+        } else if (valCurr !== undefined) {
+            stateText = "Nuevo Marcador";
+            badgeClass = "variation-neutral";
         }
         
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${config.name}</strong></td>
-            <td>${formatClinicalValue(valPrev, key)} ${config.unit}</td>
-            <td>${formatClinicalValue(valCurr, key)} ${config.unit}</td>
-            <td>${diffAbs > 0 ? '+' : ''}${formatClinicalValue(diffAbs, key)} ${config.unit}</td>
-            <td>${diffPct > 0 ? '+' : ''}${diffPct.toFixed(1)}%</td>
+            <td>${prevStr}</td>
+            <td>${currStr}</td>
+            <td>${diffAbsStr}</td>
+            <td>${diffPctStr}</td>
             <td><span class="variation-badge ${badgeClass}">${stateText}</span></td>
         `;
         tbody.appendChild(row);
@@ -1928,135 +2823,166 @@ function renderComparisonTable() {
 
 // 13. GENERATE & RENDER REPORT IN PATIENT VIEW
 function renderAiReportView() {
-    const placeholder = document.getElementById('ai-placeholder-card');
-    const content = document.getElementById('ai-report-content');
-    
-    if (state.exams.length === 0) {
-        placeholder.classList.remove('hidden');
-        content.classList.add('hidden');
-        return;
-    }
-    
-    placeholder.classList.add('hidden');
-    content.classList.remove('hidden');
-    
-    const latest = state.exams[state.exams.length - 1];
-    const report = latest.aiReport;
-    const rules = latest.rulesResult;
-    
-    // Critical alert banner
-    const alertBanner = document.getElementById('ai-critical-banner');
-    const alertDesc = document.getElementById('ai-critical-banner-desc');
-    if (rules.alerts.length > 0) {
-        alertBanner.classList.remove('hidden');
-        alertDesc.innerHTML = rules.alerts.map(a => `• <strong>${a.name} (${a.value} ${a.unit})</strong>: ${a.message}`).join('<br>');
-    } else {
-        alertBanner.classList.add('hidden');
-    }
-    
-    // Validation status banner
-    const validationBanner = document.getElementById('ai-validation-banner');
-    const validationIcon = document.getElementById('validation-icon');
-    const validationTitle = document.getElementById('validation-title');
-    const validationSubtitle = document.getElementById('validation-subtitle');
-    
-    if (latest.validationStatus === 'pending') {
-        validationBanner.className = "doctor-validation-banner pending";
-        validationIcon.innerText = "⏳";
-        validationTitle.innerText = "Informe en Proceso de Revisión";
-        validationSubtitle.innerText = "Las recomendaciones de la IA están siendo validadas por un profesional de la salud antes de su entrega definitiva.";
-    } else {
-        validationBanner.className = "doctor-validation-banner approved";
-        validationIcon.innerText = "🛡️";
-        validationTitle.innerText = `Informe Validado por Especialista`;
-        validationSubtitle.innerText = `Revisado y aprobado el ${latest.validationDate} por ${latest.validatedBy}.`;
-    }
-    
-    // Explanations
-    document.getElementById('ai-text-easy').innerText = report.easyExplanation;
-    document.getElementById('ai-text-technical').innerText = report.technicalExplanation;
-    document.getElementById('ai-text-risks').innerText = report.risks;
-    
-    // Plans
-    document.getElementById('ai-plan-exercise').innerText = report.exercisePlan;
-    document.getElementById('ai-plan-diet').innerText = report.dietPlan;
-    document.getElementById('ai-plan-lifestyle').innerText = report.lifestylePlan;
-    
-    // Specialist Recommendation
-    document.getElementById('ai-specialist-name').innerText = report.specialistName;
-    document.getElementById('ai-specialist-desc').innerText = report.specialistDesc;
-    
-    // RAG Citations
-    const citationsList = document.getElementById('ai-citations-list');
-    citationsList.innerHTML = report.citations.map(c => `
-        <li>
-            <span class="citation-source">📚 ${c.source}</span>
-            <span class="citation-evidence">${c.evidence}</span>
-        </li>
-    `).join('');
-    
-    // Dynamic explanations of variations (RF-45)
-    const variationCard = document.getElementById('ai-variation-card');
-    const variationText = document.getElementById('ai-variation-text');
-    
-    if (state.exams.length >= 2) {
-        variationCard.classList.remove('hidden');
+    try {
+        const placeholder = document.getElementById('ai-placeholder-card');
+        const content = document.getElementById('ai-report-content');
         
-        const current = state.exams[state.exams.length - 1];
-        const previous = state.exams[state.exams.length - 2];
+        if (state.exams.length === 0) {
+            if (placeholder) placeholder.classList.remove('hidden');
+            if (content) content.classList.add('hidden');
+            return;
+        }
         
-        let varHtml = "";
+        if (placeholder) placeholder.classList.add('hidden');
+        if (content) content.classList.remove('hidden');
         
-        // Find variations > 10%
-        for (const [key, config] of Object.entries(CLINICAL_RANGES)) {
-            const valPrev = previous.values[key];
-            const valCurr = current.values[key];
-            if (valPrev === undefined || valCurr === undefined) continue;
-            
-            const diffPct = ((valCurr - valPrev) / valPrev) * 100;
-            
-            if (Math.abs(diffPct) >= 10.0) {
-                let causeDesc = "";
-                let isDecrease = diffPct < 0;
-                
-                if (key === 'glucosa' || key === 'hba1c') {
-                    causeDesc = isDecrease 
-                        ? "Esta disminución del azúcar en sangre se asocia habitualmente con una reducción en la ingesta de carbohidratos simples, adherencia al tratamiento de control de glucemia y la incorporación de ejercicio aeróbico ligero posterior a comidas."
-                        : "El incremento significativo sugiere un consumo elevado de alimentos hiperglucémicos, disminución de la actividad física aeróbica habitual o necesidad de reajustar las dosis de hipoglucemiantes.";
-                } else if (key === 'ldl' || key === 'colesterol_total') {
-                    causeDesc = isDecrease
-                        ? "La baja en el colesterol malo suele estar vinculada a una dieta reducida en grasas saturadas, aumento en el aporte de fibra soluble (avena, legumbres) o efectividad de estatinas."
-                        : "La subida se asocia a ingestas elevadas de lácteos enteros, carnes rojas y grasas saturadas, o predisposición genética activa.";
-                } else if (key === 'vitamina_d') {
-                    causeDesc = isDecrease
-                        ? "La pérdida indica baja exposición solar regular y falta de aportación en alimentos fortificados."
-                        : "La mejoría se asocia positivamente a una mayor exposición a radiación UVB o suplementación terapéutica oral.";
-                } else if (key === 'hemoglobina' || key === 'ferritina') {
-                    causeDesc = isDecrease
-                        ? "El descenso en reservas de hierro puede estar relacionado con pérdidas sanguíneas digestivas/ginecológicas, o baja absorción en dieta vegana/vegetariana sin suplementación."
-                        : "El incremento indica buena respuesta a la suplementación de sulfato ferroso y alimentos ricos en hierro hemo.";
-                } else {
-                    causeDesc = `Variación significativa del ${Math.round(diffPct)}% con respecto al control del examen anterior.`;
-                }
-                
-                varHtml += `
-                    <div class="variation-item-box">
-                        <div class="variation-item-header">
-                            <span class="variation-item-title">${config.name}</span>
-                            <span class="variation-badge ${isDecrease ? 'variation-down' : 'variation-up'}">${isDecrease ? '-' : '+'}${Math.round(Math.abs(diffPct))}%</span>
-                        </div>
-                        <p>${causeDesc}</p>
-                    </div>
-                `;
+        const latest = getActiveExam() || state.exams[state.exams.length - 1];
+        if (!latest) return;
+        
+        // Guarantee rulesResult & aiReport exist
+        if (!latest.rulesResult) {
+            latest.rulesResult = runClinicalRulesEngine(latest.values || {}, state.profile || {});
+        }
+        if (!latest.aiReport) {
+            latest.aiReport = orchestrateAiReport(state.profile || {}, latest, latest.rulesResult);
+        }
+        
+        const report = latest.aiReport || orchestrateAiReport(state.profile || {}, latest, latest.rulesResult);
+        const rules = latest.rulesResult || { alerts: [], evaluations: [] };
+        const alerts = rules.alerts || [];
+        
+        // Critical alert banner
+        const alertBanner = document.getElementById('ai-critical-banner');
+        const alertDesc = document.getElementById('ai-critical-banner-desc');
+        if (alertBanner && alertDesc) {
+            if (alerts.length > 0) {
+                alertBanner.classList.remove('hidden');
+                alertDesc.innerHTML = alerts.map(a => `• <strong>${a.name} (${a.value} ${a.unit})</strong>: ${a.message}`).join('<br>');
+            } else {
+                alertBanner.classList.add('hidden');
             }
         }
         
-        if (varHtml === "") {
-            varHtml = "<p class='text-muted'>No se registraron variaciones de indicadores superiores al 10% en comparación con el control anterior.</p>";
+        // Validation status banner
+        const validationBanner = document.getElementById('ai-validation-banner');
+        const validationIcon = document.getElementById('validation-icon');
+        const validationTitle = document.getElementById('validation-title');
+        const validationSubtitle = document.getElementById('validation-subtitle');
+        
+        if (validationBanner) {
+            if (latest.validationStatus === 'pending') {
+                validationBanner.className = "doctor-validation-banner pending";
+                if (validationIcon) validationIcon.innerText = "⏳";
+                if (validationTitle) validationTitle.innerText = "Informe en Proceso de Revisión";
+                if (validationSubtitle) validationSubtitle.innerText = "Las recomendaciones de la IA están siendo validadas por un profesional de la salud antes de su entrega definitiva.";
+            } else {
+                validationBanner.className = "doctor-validation-banner approved";
+                if (validationIcon) validationIcon.innerText = "🛡️";
+                if (validationTitle) validationTitle.innerText = `Informe Validado por Especialista`;
+                if (validationSubtitle) validationSubtitle.innerText = `Revisado y aprobado el ${latest.validationDate || 'recientemente'} por ${latest.validatedBy || 'Especialista'}.`;
+            }
         }
-        variationText.innerHTML = varHtml;
-    } else {
-        variationCard.classList.add('hidden');
+        
+        // Explanations
+        const elVar = document.getElementById('ai-text-variables');
+        if (elVar) elVar.innerHTML = report.variableAnalysisHtml || "Sin análisis multivariable registrado.";
+        const elEasy = document.getElementById('ai-text-easy');
+        const elTech = document.getElementById('ai-text-technical');
+        const elRisks = document.getElementById('ai-text-risks');
+        if (elEasy) elEasy.innerText = report.easyExplanation || "Sin desglose registrado.";
+        if (elTech) elTech.innerText = report.technicalExplanation || "Sin análisis técnico registrado.";
+        if (elRisks) elRisks.innerText = report.risks || "Sin factores de riesgo elevados.";
+        
+        // Plans
+        const elEx = document.getElementById('ai-plan-exercise');
+        const elDiet = document.getElementById('ai-plan-diet');
+        const elLife = document.getElementById('ai-plan-lifestyle');
+        if (elEx) elEx.innerHTML = report.exercisePlan || "Sin plan asignado.";
+        if (elDiet) elDiet.innerHTML = report.dietPlan || "Sin plan asignado.";
+        if (elLife) elLife.innerText = report.lifestylePlan || "Sin sugerencias registradas.";
+        
+        // Specialist Recommendation
+        const elSpecName = document.getElementById('ai-specialist-name');
+        const elSpecDesc = document.getElementById('ai-specialist-desc');
+        if (elSpecName) elSpecName.innerText = report.specialistName || "Médico General";
+        if (elSpecDesc) elSpecDesc.innerText = report.specialistDesc || "Tus indicadores se encuentran en rangos habituales.";
+        
+        // RAG Citations
+        const citationsList = document.getElementById('ai-citations-list');
+        if (citationsList && report.citations) {
+            citationsList.innerHTML = report.citations.map(c => `
+                <li>
+                    <span class="citation-source">📚 ${c.source}</span>
+                    <span class="citation-evidence">${c.evidence}</span>
+                </li>
+            `).join('');
+        }
+        
+        // Dynamic explanations of variations (RF-45)
+        const variationCard = document.getElementById('ai-variation-card');
+        const variationText = document.getElementById('ai-variation-text');
+        
+        if (state.exams.length >= 2 && variationCard && variationText) {
+            variationCard.classList.remove('hidden');
+            
+            const current = state.exams[state.exams.length - 1];
+            const previous = state.exams[state.exams.length - 2];
+            
+            let varHtml = "";
+            
+            // Find variations > 10%
+            for (const [key, config] of Object.entries(CLINICAL_RANGES)) {
+                const valPrev = previous.values ? previous.values[key] : undefined;
+                const valCurr = current.values ? current.values[key] : undefined;
+                if (valPrev === undefined || valCurr === undefined) continue;
+                
+                const diffPct = ((valCurr - valPrev) / valPrev) * 100;
+                
+                if (Math.abs(diffPct) >= 10.0) {
+                    let causeDesc = "";
+                    let isDecrease = diffPct < 0;
+                    
+                    if (key === 'glucosa' || key === 'hba1c') {
+                        causeDesc = isDecrease 
+                            ? "Esta disminución del azúcar en sangre se asocia habitualmente con una reducción en la ingesta de carbohidratos simples, adherencia al tratamiento de control de glucemia y la incorporación de ejercicio aeróbico ligero posterior a comidas."
+                            : "El incremento significativo sugiere un consumo elevado de alimentos hiperglucémicos, disminución de la actividad física aeróbica habitual o necesidad de reajustar las dosis de hipoglucemiantes.";
+                    } else if (key === 'ldl' || key === 'colesterol_total') {
+                        causeDesc = isDecrease
+                            ? "La baja en el colesterol malo suele estar vinculada a una dieta reducida en grasas saturadas, aumento en el aporte de fibra soluble (avena, legumbres) o efectividad de estatinas."
+                            : "La subida se asocia a ingestas elevadas de lácteos enteros, carnes rojas y grasas saturadas, o predisposición genética activa.";
+                    } else if (key === 'vitamina_d') {
+                        causeDesc = isDecrease
+                            ? "La pérdida indica baja exposición solar regular y falta de aportación en alimentos fortificados."
+                            : "La mejoría se asocia positivamente a una mayor exposición a radiación UVB o suplementación terapéutica oral.";
+                    } else if (key === 'hemoglobina' || key === 'ferritina') {
+                        causeDesc = isDecrease
+                            ? "El descenso en reservas de hierro puede estar relacionado con pérdidas sanguíneas digestivas/ginecológicas, o baja absorción en dieta vegana/vegetariana sin suplementación."
+                            : "El incremento indica buena respuesta a la suplementación de sulfato ferroso y alimentos ricos en hierro hemo.";
+                    } else {
+                        causeDesc = `Variación significativa del ${Math.round(diffPct)}% con respecto al control del examen anterior.`;
+                    }
+                    
+                    varHtml += `
+                        <div class="variation-item-box">
+                            <div class="variation-item-header">
+                                <span class="variation-item-title">${config.name}</span>
+                                <span class="variation-badge ${isDecrease ? 'variation-down' : 'variation-up'}">${isDecrease ? '-' : '+'}${Math.round(Math.abs(diffPct))}%</span>
+                            </div>
+                            <p>${causeDesc}</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (varHtml === "") {
+                varHtml = "<p class='text-muted'>No se registraron variaciones de indicadores superiores al 10% en comparación con el control anterior.</p>";
+            }
+            variationText.innerHTML = varHtml;
+        } else if (variationCard) {
+            variationCard.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error("Error in renderAiReportView:", err);
     }
 }
 
@@ -2224,7 +3150,9 @@ function updateUI() {
         return;
     }
     
-    const latest = state.exams[state.exams.length - 1];
+    populateExamSelector();
+    const latest = getActiveExam();
+    if (!latest) return;
     
     // Compute Normal vs Altered vs Critical count
     let normal = 0, altered = 0, critical = 0;
@@ -2280,16 +3208,20 @@ function updateUI() {
         cardioRiskLabel.className = "text-success";
     }
     
-    // Checklist updates
-    document.getElementById('chk-first-exam').checked = true;
-    document.getElementById('chk-doctor-validation').checked = latest.validationStatus === 'approved';
-    document.getElementById('chk-next-checkup').checked = false; // requires future actions
+    // Checklist updates & Next Controls calculation
+    renderNextControls();
     
+    // Refresh all charts & Health Score Gauge
+    renderCharts();
+
+    // Refresh historical comparison table
+    renderComparisonTable();
+
     // Alerts dropdown in top bar
     const alertsBadge = document.getElementById('alerts-badge');
     const alertsDropdownList = document.getElementById('notifications-list');
     
-    if (latest.rulesResult.alerts.length > 0) {
+    if (latest.rulesResult && latest.rulesResult.alerts && latest.rulesResult.alerts.length > 0) {
         alertsBadge.classList.remove('hidden');
         alertsBadge.innerText = latest.rulesResult.alerts.length;
         
@@ -2345,7 +3277,7 @@ function initEnvironmentAndVersion() {
     }
     
     if (versionTag) {
-        versionTag.innerText = "v1.0.0";
+        versionTag.innerText = "v1.0.6";
     }
 }
 
@@ -2412,17 +3344,8 @@ function executeClearCurrentData() {
     
     // Reiniciar arreglo de exámenes y perfil en el estado de la aplicación
     state.exams = [];
-    state.profile = {
-        age: 35,
-        sex: "M",
-        weight: 70,
-        height: 170,
-        activity: "moderado",
-        diseases: [],
-        meds: "",
-        injuries: "",
-        goal: "mantener_salud"
-    };
+    state.profile = JSON.parse(JSON.stringify(EMPTY_PROFILE));
+    syncProfileFormFromState();
     
     // Registrar evento en auditoría
     if (typeof logEvent === 'function') {
@@ -2446,7 +3369,7 @@ function executeClearCurrentData() {
 function exportToExcel() {
     if (typeof XLSX === 'undefined') {
         if (typeof showToast === 'function') {
-            showToast("Error de Exportación", "La librería de Excel no terminó de cargar. Revisa tu conexión a Internet.", "error");
+            showToast("Error de Exportación", "La librería de Excel no terminó de cargar. Revisa tu conexión a Internet.", "danger");
         } else {
             alert("La librería de Excel no terminó de cargar.");
         }
@@ -2455,38 +3378,118 @@ function exportToExcel() {
     
     const userEmail = state.currentUser ? state.currentUser.email : "Usuario_Anonimo";
     const dateStr = new Date().toISOString().slice(0, 10);
-    
+    const activeExam = getActiveExam();
+    const examValues = (activeExam && activeExam.values) ? activeExam.values : {};
+
     // ---------------------------------------------------------
-    // HOJA 1: Perfil del Paciente
+    // HOJA 1: Plan Nutricional 7 Días (Menú Diarios y Pautas)
     // ---------------------------------------------------------
+    const mealRawData = getDailyMealScheduleData(state.profile, examValues);
+    const mealRows = mealRawData.map(m => ({
+        "Día": m.day,
+        "Enfoque Nutricional": m.title,
+        "Desayuno": m.desayuno,
+        "Media Mañana": m.mediaManana,
+        "Almuerzo": m.almuerzo,
+        "Media Tarde": m.mediaTarde,
+        "Cena": m.cena,
+        "Tip Nutricional & Consideraciones Fármaco-Clínicas": m.note
+    }));
+
+    // ---------------------------------------------------------
+    // HOJA 2: Rutina de Ejercicios 7 Días (Cronograma)
+    // ---------------------------------------------------------
+    const exerciseRawData = getDailyExerciseScheduleData(state.profile, examValues);
+    const exerciseRows = exerciseRawData.map(e => ({
+        "Día": e.day,
+        "Tipo de Ejercicio / Enfoque": e.type,
+        "Duración Estimada": e.duration,
+        "Actividades Recomendadas": e.activities,
+        "Impacto Fisiológico & Precauciones de Seguridad": e.note
+    }));
+
+    // ---------------------------------------------------------
+    // HOJA 3: Análisis de Variables, Fármacos e Interacciones
+    // ---------------------------------------------------------
+    const multiVar = analyzeDiseasesAndMeds(state.profile, examValues);
+    const varRows = [];
+
+    // Fila resumen perfil
     const heightM = (state.profile.height || 170) / 100;
     const weightKg = state.profile.weight || 70;
-    const imcVal = (weightKg / (heightM * heightM)).toFixed(1);
+    const imcVal = (state.profile.height && state.profile.weight) ? (weightKg / (heightM * heightM)).toFixed(1) : '--';
     
-    const profileRows = [
-        { "Campo / Parámetro": "Correo Electrónico", "Valor": userEmail },
-        { "Campo / Parámetro": "Edad", "Valor": `${state.profile.age || '--'} años` },
-        { "Campo / Parámetro": "Sexo Biológico", "Valor": state.profile.sex === 'F' ? 'Femenino' : 'Masculino' },
-        { "Campo / Parámetro": "Peso Corporal", "Valor": `${weightKg} kg` },
-        { "Campo / Parámetro": "Estatura", "Valor": `${state.profile.height || '--'} cm` },
-        { "Campo / Parámetro": "Índice de Masa Corporal (IMC)", "Valor": imcVal },
-        { "Campo / Parámetro": "Nivel de Actividad Física", "Valor": state.profile.activity || "Moderado" },
-        { "Campo / Parámetro": "Diagnósticos Preexistentes", "Valor": Array.isArray(state.profile.diseases) && state.profile.diseases.length > 0 ? state.profile.diseases.join(', ') : 'Ninguno' },
-        { "Campo / Parámetro": "Medicación Habitual", "Valor": state.profile.meds || 'Ninguna registrada' },
-        { "Campo / Parámetro": "Objetivo de Salud", "Valor": state.profile.goal || 'Mantener Salud' },
-        { "Campo / Parámetro": "Fecha de Exportación", "Valor": new Date().toLocaleString() }
-    ];
-    
+    varRows.push({ "Categoría": "Perfil Físico", "Parámetro / Variable": "Índice de Masa Corporal (IMC)", "Valor / Estado": imcVal, "Unidad / Referencia": "18.5 - 24.9 kg/m²", "Evaluación e Interacciones Fármaco-Clínicas": `Edad: ${state.profile.age || '--'} años, Sexo: ${state.profile.sex || '--'}, Peso: ${weightKg}kg, Estatura: ${state.profile.height || '--'}cm` });
+
+    // Enfermedades de base
+    if (multiVar.findings.length > 0) {
+        multiVar.findings.forEach(f => {
+            varRows.push({
+                "Categoría": "Enfermedad de Base",
+                "Parámetro / Variable": f.name,
+                "Valor / Estado": "Diagnóstico Activo",
+                "Unidad / Referencia": f.category,
+                "Evaluación e Interacciones Fármaco-Clínicas": f.detail
+            });
+        });
+    } else {
+        varRows.push({
+            "Categoría": "Enfermedad de Base",
+            "Parámetro / Variable": "Diagnósticos Preexistentes",
+            "Valor / Estado": "Sin reporte",
+            "Unidad / Referencia": "N/A",
+            "Evaluación e Interacciones Fármaco-Clínicas": "Sin diagnósticos crónicos declarados."
+        });
+    }
+
+    // Medicamentos e Interacciones
+    if (multiVar.medInteractions.length > 0) {
+        multiVar.medInteractions.forEach(m => {
+            varRows.push({
+                "Categoría": "Medicación Habitual",
+                "Parámetro / Variable": m.medication,
+                "Valor / Estado": "Prescripción Activa",
+                "Unidad / Referencia": m.type,
+                "Evaluación e Interacciones Fármaco-Clínicas": m.recommendation
+            });
+        });
+    } else {
+        varRows.push({
+            "Categoría": "Medicación Habitual",
+            "Parámetro / Variable": "Medicamentos",
+            "Valor / Estado": "Sin registro",
+            "Unidad / Referencia": "N/A",
+            "Evaluación e Interacciones Fármaco-Clínicas": "No se registran medicamentos consumidos."
+        });
+    }
+
+    // Biomarcadores del Examen
+    if (activeExam && activeExam.values) {
+        Object.entries(activeExam.values).forEach(([k, v]) => {
+            if (CLINICAL_RANGES[k]) {
+                const config = CLINICAL_RANGES[k];
+                const evalRes = config.evaluate(v, state.profile);
+                const norm = config.getNormalRange(state.profile);
+                varRows.push({
+                    "Categoría": "Biomarcador Examen",
+                    "Parámetro / Variable": config.name,
+                    "Valor / Estado": `${v} ${config.unit}`,
+                    "Unidad / Referencia": `${norm.min} - ${norm.max} ${config.unit}`,
+                    "Evaluación e Interacciones Fármaco-Clínicas": `${evalRes.status}. ${evalRes.note || ''}`
+                });
+            }
+        });
+    }
+
     // ---------------------------------------------------------
-    // HOJA 2: Historial de Exámenes Clínicos
+    // HOJA 4: Historial de Exámenes Clínicos
     // ---------------------------------------------------------
     let examRows = [];
-    
     if (state.exams && state.exams.length > 0) {
         state.exams.forEach((exam, index) => {
             const examDate = exam.date || `Examen #${index + 1}`;
-            const examCategory = exam.category || "General";
             const valStatus = exam.validationStatus === 'approved' ? 'Validado por Médico' : 'Pendiente de Validación';
+            const doctorInfo = exam.validatedBy || 'N/A';
             
             if (exam.values && typeof exam.values === 'object') {
                 Object.keys(exam.values).forEach(metricKey => {
@@ -2498,88 +3501,102 @@ function exportToExcel() {
                     const normalRangeStr = rangeInfo ? `${rangeInfo.getNormalRange(state.profile).min} - ${rangeInfo.getNormalRange(state.profile).max} ${unit}` : 'N/A';
                     
                     examRows.push({
+                        "ID Examen": exam.id || `EX-${index+1}`,
                         "Fecha Examen": examDate,
-                        "Categoría": examCategory,
                         "Indicador Clínico": metricName,
                         "Valor Medido": val,
                         "Unidad": unit,
                         "Rango Normal de Referencia": normalRangeStr,
                         "Estado Clínico": evalRes.status,
-                        "Observación / Nota": evalRes.note || '',
-                        "Estado Validación Médica": valStatus
+                        "Nota / Observación": evalRes.note || '',
+                        "Estatus Validación Médica": valStatus,
+                        "Médico Validador": doctorInfo
                     });
                 });
             }
         });
     }
-    
     if (examRows.length === 0) {
         examRows.push({
+            "ID Examen": "--",
             "Fecha Examen": "--",
-            "Categoría": "--",
-            "Indicador Clínico": "Sin datos de exámenes cargados",
+            "Indicador Clínico": "Sin datos de exámenes registrados",
             "Valor Medido": "--",
             "Unidad": "--",
             "Rango Normal de Referencia": "--",
-            "Estado Clínico": "Pendiente",
-            "Observación / Nota": "Carga tu primer examen clínico para ver el detalle",
-            "Estado Validación Médica": "--"
+            "Estado Clínico": "--",
+            "Nota / Observación": "Carga tu primer examen en la plataforma.",
+            "Estatus Validación Médica": "--",
+            "Médico Validador": "--"
         });
     }
-    
+
     // ---------------------------------------------------------
-    // HOJA 3: Resumen de Riesgos y Evaluación
+    // HOJA 5: Trazabilidad y Auditoría
     // ---------------------------------------------------------
-    let alteredCount = 0;
-    let criticalCount = 0;
-    let normalCount = 0;
-    
-    if (state.exams && state.exams.length > 0) {
-        const latest = state.exams[state.exams.length - 1];
-        if (latest.rulesResult && latest.rulesResult.evaluations) {
-            latest.rulesResult.evaluations.forEach(ev => {
-                if (ev.state === 'critical') criticalCount++;
-                else if (ev.state === 'altered') alteredCount++;
-                else normalCount++;
+    let auditRows = [];
+    if (state.auditLogs && state.auditLogs.length > 0) {
+        state.auditLogs.forEach(log => {
+            auditRows.push({
+                "Fecha y Hora": log.timestamp,
+                "ID Evento": log.id,
+                "Usuario / Rol": log.user,
+                "Acción Realizada": log.action,
+                "Descripción": log.description,
+                "Hash Criptográfico de Integridad": log.hash
             });
-        }
+        });
+    } else {
+        auditRows.push({
+            "Fecha y Hora": new Date().toLocaleString(),
+            "ID Evento": "EV-00",
+            "Usuario / Rol": userEmail,
+            "Acción Realizada": "Inicio",
+            "Descripción": "Sin registros de auditoría",
+            "Hash Criptográfico de Integridad": "N/A"
+        });
     }
-    
-    const summaryRows = [
-        { "Métrica de Resumen": "Total de Exámenes Registrados", "Valor": state.exams ? state.exams.length : 0 },
-        { "Métrica de Resumen": "Indicadores en Estado Normal", "Valor": normalCount },
-        { "Métrica de Resumen": "Indicadores Alterados", "Valor": alteredCount },
-        { "Métrica de Resumen": "Indicadores Críticos", "Valor": criticalCount },
-        { "Métrica de Resumen": "Score de Salud General", "Valor": document.getElementById('health-score-val')?.innerText || '--' },
-        { "Métrica de Resumen": "Estado Cardiovascular Evaluado", "Valor": document.getElementById('kpi-cardio-risk')?.innerText || 'Pendiente' }
-    ];
     
     // Crear Libro de Trabajo XLSX
     const wb = XLSX.utils.book_new();
     
-    const sheetProfile = XLSX.utils.json_to_sheet(profileRows);
+    const sheetMeal = XLSX.utils.json_to_sheet(mealRows);
+    const sheetExercise = XLSX.utils.json_to_sheet(exerciseRows);
+    const sheetVars = XLSX.utils.json_to_sheet(varRows);
     const sheetExams = XLSX.utils.json_to_sheet(examRows);
-    const sheetSummary = XLSX.utils.json_to_sheet(summaryRows);
+    const sheetAudit = XLSX.utils.json_to_sheet(auditRows);
     
-    // Ajustar anchos de columnas para mejor presentación
-    sheetProfile['!cols'] = [{ wch: 30 }, { wch: 35 }];
+    // Ajustar anchos de columnas
+    sheetMeal['!cols'] = [
+        { wch: 12 }, { wch: 42 }, { wch: 45 }, { wch: 40 },
+        { wch: 45 }, { wch: 40 }, { wch: 45 }, { wch: 60 }
+    ];
+    sheetExercise['!cols'] = [
+        { wch: 12 }, { wch: 38 }, { wch: 18 }, { wch: 55 }, { wch: 60 }
+    ];
+    sheetVars['!cols'] = [
+        { wch: 22 }, { wch: 35 }, { wch: 25 }, { wch: 28 }, { wch: 65 }
+    ];
     sheetExams['!cols'] = [
-        { wch: 15 }, { wch: 18 }, { wch: 30 }, { wch: 14 }, 
+        { wch: 18 }, { wch: 15 }, { wch: 35 }, { wch: 14 }, 
         { wch: 10 }, { wch: 28 }, { wch: 20 }, { wch: 40 }, { wch: 24 }
     ];
-    sheetSummary['!cols'] = [{ wch: 35 }, { wch: 20 }];
+    sheetAudit['!cols'] = [
+        { wch: 20 }, { wch: 14 }, { wch: 30 }, { wch: 25 }, { wch: 55 }, { wch: 40 }
+    ];
     
-    XLSX.utils.book_append_sheet(wb, sheetProfile, "Perfil Paciente");
+    XLSX.utils.book_append_sheet(wb, sheetMeal, "Plan Nutricional 7 Días");
+    XLSX.utils.book_append_sheet(wb, sheetExercise, "Rutina Ejercicio 7 Días");
+    XLSX.utils.book_append_sheet(wb, sheetVars, "Análisis Variables & Fármacos");
     XLSX.utils.book_append_sheet(wb, sheetExams, "Historial de Exámenes");
-    XLSX.utils.book_append_sheet(wb, sheetSummary, "Resumen de Riesgos");
+    XLSX.utils.book_append_sheet(wb, sheetAudit, "Trazabilidad y Auditoría");
     
     // Descargar archivo Excel
     const sanitizedEmail = userEmail.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `HealthAnalytics_Historial_${sanitizedEmail}_${dateStr}.xlsx`;
+    const fileName = `HealthAnalytics_Rutina_Dieta_y_Analisis_${sanitizedEmail}_${dateStr}.xlsx`;
     XLSX.writeFile(wb, fileName);
     
     if (typeof showToast === 'function') {
-        showToast("Excel Generado", `El archivo ${fileName} se ha descargado correctamente.`, "success");
+        showToast("Excel Generado", `El archivo ${fileName} con la Rutina, Plan Alimenticio y Análisis de Variables se ha descargado correctamente.`, "success");
     }
 }
-

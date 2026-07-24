@@ -2140,3 +2140,118 @@ h1, h2, h3, h4, h5, h6 {
     color: #fca5a5;
 }
 
+/* DETAILED DAILY PLANS STYLING */
+.daily-plan-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.plan-header-summary {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.day-plan-card {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+details.day-plan-card summary.day-plan-header {
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    list-style: none;
+}
+
+details.day-plan-card summary::-webkit-details-marker {
+    display: none;
+}
+
+.day-plan-card:hover {
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.day-plan-header {
+    background: rgba(15, 23, 42, 0.8);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.day-plan-header .day-arrow {
+    transition: transform 0.2s ease;
+    font-size: 0.8rem;
+    margin-left: 6px;
+}
+
+details[open] .day-plan-header .day-arrow {
+    transform: rotate(180deg);
+}
+
+.day-plan-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.day-plan-body {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.meal-schedule-item {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.meal-schedule-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.meal-label {
+    font-weight: 600;
+    color: #38BDF8;
+}
+
+.exercise-activity-item {
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.day-clinical-note {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(6, 182, 212, 0.08);
+    border-left: 3px solid var(--color-secondary);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #94A3B8;
+}
+

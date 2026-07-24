@@ -17,7 +17,7 @@
     </script>
     <!-- SheetJS (XLSX) para exportar historial clínico a Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1.0.6">
 </head>
 <body class="dark-theme">
     
@@ -169,7 +169,7 @@
                     <h2 id="view-title">Panel de Salud</h2>
                     <div class="env-version-container">
                         <span id="env-badge" class="env-badge staging" title="Ambiente actual configurado en Firebase">PRUEBAS</span>
-                        <span id="app-version-tag" class="version-tag" title="Control de versión SemVer">v1.0.0</span>
+                        <span id="app-version-tag" class="version-tag" title="Control de versión SemVer">v1.0.6</span>
                     </div>
                 </div>
                 <div class="topbar-right">
@@ -215,6 +215,15 @@
                 
                 <!-- 1. DASHBOARD VIEW -->
                 <section id="dashboard-view" class="view-section active">
+                    <!-- EXAM SELECTOR BAR -->
+                    <div class="card exam-selector-banner" style="margin-bottom: 20px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.2rem;">📁</span>
+                            <strong style="color: #F3F4F6;">Examen Activo para Análisis:</strong>
+                        </div>
+                        <select id="active-exam-select-dashboard" class="form-select" style="max-width: 450px; background: #1E293B; color: #FFF; border: 1px solid #334155; padding: 8px 12px; border-radius: 8px; font-weight: 500; cursor: pointer;"></select>
+                    </div>
+
                     <div class="dashboard-grid">
                         
                         <!-- KPIs -->
@@ -276,8 +285,11 @@
                                 <li><input type="checkbox" checked disabled> Completar perfil de salud</li>
                                 <li><input type="checkbox" id="chk-first-exam" disabled> Cargar primer examen clínico</li>
                                 <li><input type="checkbox" id="chk-doctor-validation" disabled> Obtener validación médica</li>
-                                <li><input type="checkbox" id="chk-next-checkup" disabled> Próximo control clínico (Recomendado)</li>
+                                <li><input type="checkbox" id="chk-next-checkup" disabled> Próximo control clínico</li>
                             </ul>
+                            <div id="next-checkup-date-info" style="margin-top: 12px; padding: 10px 14px; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; font-size: 0.85rem; color: #E2E8F0; line-height: 1.4;">
+                                Carga un examen para calcular la fecha del próximo control.
+                            </div>
                         </div>
 
                         <!-- CHARTS PANEL -->
@@ -473,8 +485,9 @@
                             </div>
 
                             <div class="ocr-actions-footer">
-                                <button class="btn btn-outline" id="btn-cancel-ocr">Cancelar</button>
-                                <button class="btn btn-primary" id="btn-save-exam">Guardar en Historial y Analizar</button>
+                                <button type="button" class="btn btn-secondary" id="btn-add-biomarker">+ Agregar Indicador Manual</button>
+                                <button type="button" class="btn btn-outline" id="btn-cancel-ocr">Cancelar</button>
+                                <button type="button" class="btn btn-primary" id="btn-save-exam">Guardar en Historial y Analizar</button>
                             </div>
                         </div>
 
@@ -522,6 +535,7 @@
                                     <div class="form-group">
                                         <label for="prof-activity">Nivel de Actividad Física</label>
                                         <select id="prof-activity" required>
+                                            <option value="">Selecciona...</option>
                                             <option value="sedentario">Sedentario (Poco o nada de ejercicio)</option>
                                             <option value="moderado" selected>Moderado (Ejercicio 2-3 veces/semana)</option>
                                             <option value="activo">Activo (Ejercicio intenso 4-5 veces/semana)</option>
@@ -623,6 +637,15 @@
 
                         <!-- MAIN INTERPRETATION CONTENT -->
                         <div id="ai-report-content" class="hidden">
+                            <!-- EXAM SELECTOR BAR -->
+                            <div class="card exam-selector-banner" style="margin-bottom: 20px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.2rem;">📁</span>
+                                    <strong style="color: #F3F4F6;">Examen Activo para Análisis IA:</strong>
+                                </div>
+                                <select id="active-exam-select-interpretation" class="form-select" style="max-width: 450px; background: #1E293B; color: #FFF; border: 1px solid #334155; padding: 8px 12px; border-radius: 8px; font-weight: 500; cursor: pointer;"></select>
+                            </div>
+
                             <!-- CLINICAL ALERT BANNER (If rules engine triggers critical alert) -->
                             <div class="clinical-alert-banner hidden" id="ai-critical-banner">
                                 <span class="alert-banner-icon">⚠️</span>
@@ -652,13 +675,17 @@
                                         
                                         <div class="tab-container">
                                             <div class="tab-headers">
-                                                <button class="tab-header active" data-tab="tab-easy">Explicación Sencilla</button>
+                                                <button class="tab-header active" data-tab="tab-variables">Análisis Integrado de Variables</button>
+                                                <button class="tab-header" data-tab="tab-easy">Explicación Sencilla</button>
                                                 <button class="tab-header" data-tab="tab-technical">Explicación Técnica</button>
-                                                <button class="tab-header" data-tab="tab-risks">Riesgos Clinicos</button>
+                                                <button class="tab-header" data-tab="tab-risks">Riesgos Clínicos</button>
                                             </div>
                                             
                                             <div class="tab-contents">
-                                                <div class="tab-content active" id="tab-easy">
+                                                <div class="tab-content active" id="tab-variables">
+                                                    <div class="explanation-p" id="ai-text-variables">Analizando biomarcadores, enfermedades de base, medicamentos e interacciones...</div>
+                                                </div>
+                                                <div class="tab-content" id="tab-easy">
                                                     <p class="explanation-p" id="ai-text-easy">Generando explicación sencilla en lenguaje comprensible...</p>
                                                 </div>
                                                 <div class="tab-content" id="tab-technical">
@@ -700,8 +727,15 @@
 
                                     <!-- DETAILED PLANS -->
                                     <div class="card plans-card">
-                                        <h3>Plan de Bienestar Personalizado (HU-07)</h3>
-                                        <p class="card-desc">Plan estructurado según tu perfil físico, objetivos clínicos y recomendaciones de las guías internacionales RAG.</p>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                                            <div>
+                                                <h3 style="margin: 0;">Plan de Bienestar Personalizado (HU-07)</h3>
+                                                <p class="card-desc" style="margin: 4px 0 0 0;">Plan estructurado según tu perfil, enfermedades de base, medicamentos y guías RAG.</p>
+                                            </div>
+                                            <button id="btn-export-plans-excel-card" class="btn btn-success btn-sm" onclick="exportToExcel()" style="background: #10B981; border: none; padding: 8px 14px; font-weight: 600; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: #fff; font-size: 0.85rem;" title="Exportar la rutina de ejercicios y el plan alimenticio a un archivo de Excel">
+                                                <span>📊</span> Descargar Rutina y Plan en Excel (.xlsx)
+                                            </button>
+                                        </div>
 
                                         <div class="plan-blocks">
                                             <div class="plan-block">
@@ -952,6 +986,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=1.0.6"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
   "name": "health-analytics-ai",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Plataforma Inteligente de Gestión & Analítica de Salud con Inteligencia Artificial",
   "main": "app.js",
   "scripts": {

@@ -1,5 +1,6 @@
 {
   "projects": {
+    "default": "health-analytics-staging",
     "staging": "health-analytics-staging",
     "production": "health-analytics-prod"
   },
@@ -8,11 +9,17 @@
       "hosting": {
         "staging": [
           "health-analytics-staging"
+        ],
+        "production": [
+          "health-analytics-staging"
         ]
       }
     },
     "health-analytics-prod": {
       "hosting": {
+        "staging": [
+          "health-analytics-prod"
+        ],
         "production": [
           "health-analytics-prod"
         ]
