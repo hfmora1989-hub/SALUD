@@ -396,17 +396,7 @@ function getUserDb() {
         const stored = localStorage.getItem('health_user_db');
         if (stored) return JSON.parse(stored);
     } catch (e) { console.error('Error reading user db', e); }
-    return [
-        {
-            email: "paciente.ejemplo@salud.org",
-            name: "Paciente Ejemplo",
-            password: "Paciente123*",
-            status: "active",
-            termsAccepted: true,
-            termsAcceptedAt: new Date().toISOString(),
-            googleAuth: false
-        }
-    ];
+    return [];
 }
 
 function saveUserDb(users) {
@@ -438,11 +428,7 @@ function loadDoctors() {
     if (stored) {
         state.doctors = JSON.parse(stored);
     } else {
-        state.doctors = [
-            { id: 'DOC-1', name: 'Dr. Carlos Roberto Gómez', specialty: 'Endocrinología', contact: '+57 310 456 7890 | Consultorio 502', institution: 'Centro Médico San José' },
-            { id: 'DOC-2', name: 'Dra. Elena Torres', specialty: 'Cardiología', contact: '+57 300 987 6543 | Consultorio 301', institution: 'Clínica los Andes' }
-        ];
-        saveDoctors();
+        state.doctors = [];
     }
 }
 
@@ -459,19 +445,7 @@ function loadAppointments() {
     if (stored) {
         state.appointments = JSON.parse(stored);
     } else {
-        state.appointments = [
-            {
-                id: 'APP-1',
-                date: new Date(Date.now() + 12 * 86400000).toISOString().slice(0, 16),
-                doctorName: 'Dr. Carlos Roberto Gómez',
-                specialty: 'Endocrinología',
-                contact: '+57 310 456 7890',
-                reason: 'Control trimestral de HbA1c y ajuste de Metformina',
-                notes: 'Traer últimos exámenes impresos y ayuno de 8h',
-                status: 'Programada'
-            }
-        ];
-        saveAppointments();
+        state.appointments = [];
     }
 }
 
@@ -3737,7 +3711,7 @@ function initEnvironmentAndVersion() {
     }
     
     if (versionTag) {
-        versionTag.innerText = "v1.0.7";
+        versionTag.innerText = "v1.0.8";
     }
 }
 
@@ -3794,7 +3768,11 @@ function executeClearCurrentData() {
         // Borrar llaves asociadas a la cuenta en localStorage
         localStorage.removeItem(`health_profile_${userEmail}`);
         localStorage.removeItem(`health_exams_${userEmail}`);
+        localStorage.removeItem(`health_doctors_${userEmail}`);
+        localStorage.removeItem(`health_appointments_${userEmail}`);
     }
+    state.doctors = [];
+    state.appointments = [];
     
     // Limpiar cola global de validaciones pendientes para este paciente
     if (state.pendingValidations) {
