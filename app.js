@@ -1469,21 +1469,14 @@ function loadState() {
     const savedPending = localStorage.getItem('health_pending_validations');
     if (savedPending) state.pendingValidations = JSON.parse(savedPending);
 
-    // Try to restore session
-    const savedUser = localStorage.getItem('health_active_user');
-    if (savedUser) {
-        state.currentUser = JSON.parse(savedUser);
-        loadUserData(); // Load this user's profile and exams!
-        
-        document.getElementById('auth-view').classList.add('hidden');
-        document.getElementById('app-container').classList.remove('hidden');
-        document.getElementById('user-display-email').innerText = state.currentUser.email;
-        document.getElementById('user-avatar-char').innerText = state.currentUser.email.charAt(0).toUpperCase();
-        
-        // Sync menus and views
-        switchActiveView('dashboard-view');
-        updateUI();
-    }
+    // Asegurar que la pantalla por defecto al ingresar a la URL sea siempre el Login / Registro (Auth View)
+    state.currentUser = null;
+    localStorage.removeItem('health_active_user');
+    
+    const authView = document.getElementById('auth-view');
+    const appContainer = document.getElementById('app-container');
+    if (authView) authView.classList.remove('hidden');
+    if (appContainer) appContainer.classList.add('hidden');
 }
 
 function saveProfile() {
@@ -3779,7 +3772,7 @@ function initEnvironmentAndVersion() {
     }
     
     if (versionTag) {
-        versionTag.innerText = "v1.0.9";
+        versionTag.innerText = "v1.0.10";
     }
 }
 
