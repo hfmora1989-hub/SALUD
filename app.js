@@ -3277,7 +3277,7 @@ function initEnvironmentAndVersion() {
     }
     
     if (versionTag) {
-        versionTag.innerText = "v1.0.6";
+        versionTag.innerText = "v1.0.7";
     }
 }
 
