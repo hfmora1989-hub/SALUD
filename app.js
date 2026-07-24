@@ -1956,6 +1956,74 @@ if (loginForm) {
     });
 }
 
+// 4.5 Cierre de Sesión (Logout)
+const btnLogout = document.getElementById('btn-logout');
+if (btnLogout) {
+    btnLogout.addEventListener('click', (e) => {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        
+        logEvent("Cierre de Sesión", `El usuario ${state.currentUser ? state.currentUser.email : ''} cerró sesión.`);
+        
+        // Limpiar almacenamiento de sesión activa
+        localStorage.removeItem('health_active_user');
+        
+        // Reiniciar memoria del estado global
+        state.currentUser = null;
+        state.exams = [];
+        state.profile = JSON.parse(JSON.stringify(EMPTY_PROFILE));
+        state.doctors = [];
+        state.appointments = [];
+        state.activeRole = 'patient';
+        
+        // Limpiar campos de formularios e inputs del DOM
+        const regForm = document.getElementById('register-form');
+        if (regForm) regForm.reset();
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) loginForm.reset();
+        const profForm = document.getElementById('profile-form');
+        if (profForm) profForm.reset();
+        
+        const ocrCard = document.getElementById('ocr-result-card');
+        if (ocrCard) ocrCard.classList.add('hidden');
+        const ocrLoader = document.getElementById('ocr-loader');
+        if (ocrLoader) ocrLoader.classList.add('hidden');
+        
+        // Limpiar textos y avatares de la barra lateral
+        const displayEmail = document.getElementById('user-display-email');
+        if (displayEmail) displayEmail.innerText = "usuario@correo.com";
+        const avatarChar = document.getElementById('user-avatar-char');
+        if (avatarChar) avatarChar.innerText = "U";
+        
+        // Reiniciar selectores de roles y menús laterales
+        const rolePatient = document.getElementById('role-patient');
+        if (rolePatient) rolePatient.checked = true;
+        const navDoctor = document.getElementById('nav-section-doctor');
+        if (navDoctor) navDoctor.classList.add('hidden');
+        const navPatient = document.getElementById('nav-section-patient');
+        if (navPatient) navPatient.classList.remove('hidden');
+        const sidebarRoleBadge = document.getElementById('sidebar-role-badge');
+        if (sidebarRoleBadge) {
+            sidebarRoleBadge.innerText = 'Paciente';
+            sidebarRoleBadge.className = 'role-badge';
+        }
+        
+        // Destruir instancias de gráficos activos para liberar memoria de renderizado
+        if (typeof evolutionChart !== 'undefined' && evolutionChart) { evolutionChart.destroy(); evolutionChart = null; }
+        if (typeof radarChart !== 'undefined' && radarChart) { radarChart.destroy(); radarChart = null; }
+        if (typeof projectionChart !== 'undefined' && projectionChart) { projectionChart.destroy(); projectionChart = null; }
+        
+        // Refrescar UI (volverá a mostrar marcadores vacíos)
+        updateUI();
+        
+        // Ocultar la aplicación y mostrar pantalla de autenticación
+        document.getElementById('app-container').classList.add('hidden');
+        document.getElementById('auth-view').classList.remove('hidden');
+        
+        showToast("Sesión Cerrada", "Has cerrado sesión de forma segura.", "info");
+    });
+}
+
+
 // 5. Formulario de Doctores Tratantes (Directorio)
 const btnToggleDocForm = document.getElementById('btn-toggle-add-doctor-form');
 const docFormContainer = document.getElementById('add-doctor-form-container');
@@ -3711,7 +3779,7 @@ function initEnvironmentAndVersion() {
     }
     
     if (versionTag) {
-        versionTag.innerText = "v1.0.8";
+        versionTag.innerText = "v1.0.9";
     }
 }
 
