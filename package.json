@@ -22,6 +22,7 @@
   "author": "HealthAnalytics Team",
   "license": "MIT",
   "dependencies": {
+    "tesseract.js": "5.1.1",
     "xlsx": "^0.18.5"
   }
 }
