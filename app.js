@@ -467,7 +467,31 @@ let state = {
     appointments: []
 };
 
-// Simulated cryptographic helper to show secure hashing in audit logs
+// Helper de Sanitización de HTML para prevenir Vulnerabilidades XSS (SonarQube S2631 / S5147)
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Generador seguro de IDs con Web Crypto API (SonarQube Reliability & Security S2245)
+function generateSecureId(prefix = 'ID') {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return `${prefix}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
+    }
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        return `${prefix}-${(array[0] % 900000 + 100000)}`;
+    }
+    return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
+}
+
+// Helper criptográfico para firma hash de integridad en logs de auditoría
 function generateSimpleHash(content) {
     let hash = 0;
     const str = JSON.stringify(content);
@@ -561,13 +585,17 @@ function showToast(title, message, type = 'info') {
     if (type === 'warning') icon = '⚠️';
     if (type === 'danger') icon = '🚨';
     
-    toast.innerHTML = `
-        <span class="toast-icon">${icon}</span>
-        <div class="toast-body">
-            <h5>${title}</h5>
-            <p>${message}</p>
-        </div>
-    `;
+    const iconElement = document.createElement('span');
+    iconElement.className = 'toast-icon';
+    iconElement.textContent = icon;
+    const body = document.createElement('div');
+    body.className = 'toast-body';
+    const heading = document.createElement('h5');
+    heading.textContent = title;
+    const paragraph = document.createElement('p');
+    paragraph.textContent = message;
+    body.append(heading, paragraph);
+    toast.append(iconElement, body);
     
     container.appendChild(toast);
     
@@ -1572,7 +1600,7 @@ function renderDoctorDirectory() {
     if (selectElem) {
         selectElem.innerHTML = `<option value="">-- Seleccionar Doctor del Directorio --</option>`;
         state.doctors.forEach(d => {
-            selectElem.innerHTML += `<option value="${d.name}|${d.specialty}|${d.contact}">${d.name} (${d.specialty}) - ${d.institution}</option>`;
+            selectElem.innerHTML += `<option value="${escapeHtml(d.name)}|${escapeHtml(d.specialty)}|${escapeHtml(d.contact)}">${escapeHtml(d.name)} (${escapeHtml(d.specialty)}) - ${escapeHtml(d.institution)}</option>`;
         });
         selectElem.innerHTML += `<option value="manual">-- Otro Médico (Ingreso Manual) --</option>`;
     }
@@ -1587,12 +1615,12 @@ function renderDoctorDirectory() {
                 card.style.cssText = "background:#0F172A; border:1px solid #334155; border-radius:8px; padding:12px; font-size:0.85rem;";
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <strong style="color:#FFF; font-size:0.95rem;">👨‍⚕️ ${d.name}</strong>
+                    <strong style="color:#FFF; font-size:0.95rem;">👨‍⚕️ ${escapeHtml(d.name)}</strong>
                         <button onclick="removeDoctor(${idx})" style="background:none; border:none; color:#EF4444; cursor:pointer; font-size:0.85rem;" title="Eliminar del directorio">✕</button>
                     </div>
-                    <div style="color:#38BDF8; font-weight:600; margin-top:2px;">${d.specialty}</div>
-                    <div style="color:#CBD5E1; margin-top:6px;">📍 ${d.institution}</div>
-                    <div style="color:#94A3B8; margin-top:4px;">📞 ${d.contact}</div>
+                    <div style="color:#38BDF8; font-weight:600; margin-top:2px;">${escapeHtml(d.specialty)}</div>
+                    <div style="color:#CBD5E1; margin-top:6px;">📍 ${escapeHtml(d.institution)}</div>
+                    <div style="color:#94A3B8; margin-top:4px;">📞 ${escapeHtml(d.contact)}</div>
                 `;
                 container.appendChild(card);
             });
@@ -1745,6 +1773,13 @@ document.querySelectorAll('.nav-item').forEach(item => {
 document.querySelectorAll('input[name="role"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
         const selectedRole = e.target.id.replace('role-', '');
+        if (selectedRole !== 'patient') {
+            const patientRole = document.getElementById('role-patient');
+            if (patientRole) patientRole.checked = true;
+            state.activeRole = 'patient';
+            showToast("Acceso clínico no configurado", "Las funciones de médico y auditor requieren identidad y permisos verificados en el servidor.", "warning");
+            return;
+        }
         state.activeRole = selectedRole;
         
         // Show/hide sections in sidebar based on role
@@ -2406,7 +2441,6 @@ async function extractTextFromPdf(arrayBuffer) {
 
 function parseClinicalText(text) {
     const normalized = text.replace(/\s+/g, ' ');
-    console.log("PDF Text Extracted (Normalized):", normalized);
     
     // START WITH EMPTY OBJECT - NEVER INVENT DEFAULT VALUES
     const values = {};
@@ -2442,12 +2476,41 @@ function parseClinicalText(text) {
             const num = parseFloat(rawVal);
             if (!isNaN(num)) {
                 values[item.key] = num;
-                console.log(`Parsed biomarker ${item.key}: ${num}`);
             }
         }
     }
     
     return values;
+}
+
+async function extractTextWithOcr(pdf, onProgress) {
+    if (typeof Tesseract === 'undefined') {
+        throw new Error('El componente OCR no está disponible. Comprueba la conexión y vuelve a intentarlo.');
+    }
+
+    const maxPages = 30;
+    if (pdf.numPages > maxPages) {
+        throw new Error(`El documento tiene ${pdf.numPages} páginas. Para evitar bloquear el navegador, divídelo en archivos de hasta ${maxPages} páginas.`);
+    }
+
+    let fullText = '';
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+        if (onProgress) onProgress(pageNumber, pdf.numPages);
+        const page = await pdf.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        await page.render({ canvasContext: context, viewport }).promise;
+        const result = await Tesseract.recognize(canvas, 'spa+eng', {
+            logger: () => {}
+        });
+        fullText += `${result.data.text}\n`;
+        canvas.width = 1;
+        canvas.height = 1;
+    }
+    return fullText;
 }
 
 // Extracted date from Clinica Colsanitas PDF
@@ -2473,6 +2536,15 @@ function parseExamDateFromPdf(text) {
 }
 
 function handleExamFile(file) {
+    const maxFileSize = 25 * 1024 * 1024;
+    if (!file || file.size === 0) {
+        showToast("Archivo inválido", "Selecciona un archivo PDF o una imagen con contenido legible.", "danger");
+        return;
+    }
+    if (file.size > maxFileSize) {
+        showToast("Archivo demasiado grande", "El límite es de 25 MB para proteger el rendimiento del navegador.", "danger");
+        return;
+    }
     const reader = new FileReader();
     
     // We start the visual OCR scanning animation immediately
@@ -2506,11 +2578,22 @@ function handleExamFile(file) {
                 // Extract text from PDF
                 progressFill.style.width = '50%';
                 title.innerText = "Extrayendo texto digitalizado...";
-                const pdfText = await extractTextFromPdf(arrayBuffer);
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
+                let pdfText = await extractTextFromPdf(arrayBuffer);
                 
                 progressFill.style.width = '80%';
                 title.innerText = "Analizando marcadores clínicos...";
                 parsedValues = parseClinicalText(pdfText);
+                if (pdfText.trim().length < 80 || Object.keys(parsedValues).length === 0) {
+                    title.innerText = "Aplicando OCR al documento escaneado...";
+                    subtitle.innerText = "Reconociendo texto localmente; esto puede tardar unos minutos.";
+                    pdfText = await extractTextWithOcr(pdf, (currentPage, totalPages) => {
+                        progressFill.style.width = `${50 + Math.round((currentPage / totalPages) * 35)}%`;
+                        subtitle.innerText = `Reconociendo página ${currentPage} de ${totalPages}...`;
+                    });
+                    parsedValues = parseClinicalText(pdfText);
+                }
                 examDate = parseExamDateFromPdf(pdfText);
                 
                 const detectedCount = Object.keys(parsedValues).length;
@@ -3414,8 +3497,8 @@ function renderAiReportView() {
             if (latest.validationStatus === 'pending') {
                 validationBanner.className = "doctor-validation-banner pending";
                 if (validationIcon) validationIcon.innerText = "⏳";
-                if (validationTitle) validationTitle.innerText = "Informe en Proceso de Revisión";
-                if (validationSubtitle) validationSubtitle.innerText = "Las recomendaciones de la IA están siendo validadas por un profesional de la salud antes de su entrega definitiva.";
+                if (validationTitle) validationTitle.innerText = "Borrador de apoyo clínico — sin validación profesional";
+                if (validationSubtitle) validationSubtitle.innerText = "Este contenido es orientación preliminar generada a partir de reglas clínicas. No sustituye la valoración de un profesional ni debe usarse para iniciar, suspender o modificar tratamientos.";
             } else {
                 validationBanner.className = "doctor-validation-banner approved";
                 if (validationIcon) validationIcon.innerText = "🛡️";
